@@ -6,13 +6,7 @@ CAP-AnnData enriches the AnnData ecosystem by offering tailored functionalities 
 ## Getting Started
 
 ### Installation
-Clone the repository and install dependencies to get started. We recommend creating a virtual environment for this package:
-
-```bash
-git clone <repository-url>
-cd CAP-AnnData
-pip install -r requirements.txt
-```
+TODO: write up
 
 ### Running Tests
 Ensure the integrity and reliability of CAP-AnnData on your system by running the unit tests in `cap_anndata/test/unit_test.py`.
