@@ -5,7 +5,7 @@ setup(
     version='0.1.0',
     author='R. Mukhin, A. Isaev',
     author_email='roman@ebookapplications.com',
-    packages=find_packages(),
+    packages=find_packages(exclude=["test"]),
     description='A brief description of your package',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
