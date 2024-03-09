@@ -1,4 +1,4 @@
-from cap_anndata.backed_uns import CapAnnDataUns
+from src.cap_anndata import CapAnnDataUns
 
 
 def test_basic_init():

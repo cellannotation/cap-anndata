@@ -1,4 +1,4 @@
-from cap_anndata import CapAnnData
+from src.cap_anndata import CapAnnData
 import anndata as ad
 import numpy as np
 import tempfile
