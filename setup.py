@@ -6,7 +6,7 @@ setup(
     author='R. Mukhin, A. Isaev',
     author_email='roman@ebookapplications.com',
     packages=find_packages(exclude=["test"]),
-    description='A brief description of your package',
+    description='Partial read of AnnData files for low-memory operations with large datasets.',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/cellannotation/cap-anndata',
