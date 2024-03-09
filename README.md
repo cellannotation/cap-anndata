@@ -9,7 +9,7 @@ CAP-AnnData enriches the AnnData ecosystem by offering tailored functionalities 
 TODO: write up
 
 ### Running Tests
-Ensure the integrity and reliability of CAP-AnnData on your system by running the unit tests in `cap_anndata/test/unit_test.py`.
+Ensure the integrity and reliability of CAP-AnnData on your system by running the unit tests in `test/unit_test.py`.
 
 Make sure Python 3.9 or newer is used, along with all requirements specified in requirements.txt
 
