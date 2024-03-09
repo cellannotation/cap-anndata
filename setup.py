@@ -19,4 +19,10 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.9',
+    install_requires=[
+        "numpy>=1.26.3",
+        "pandas>=2.2.0",
+        "anndata>=0.10.5"
+    ],
+    extras_require=["pytest>=8.0.0"]
 )
