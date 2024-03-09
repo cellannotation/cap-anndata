@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from src.cap_anndata import CapAnnDataDF
+from cap_anndata import CapAnnDataDF
 
 
 
