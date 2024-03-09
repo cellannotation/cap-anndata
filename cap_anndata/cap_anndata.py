@@ -6,7 +6,7 @@ from typing import List, Union, Dict, Tuple, Final
 from anndata._io.specs import read_elem, write_elem
 from dataclasses import dataclass
 
-from src.cap_anndata import CapAnnDataDF, CapAnnDataUns
+from cap_anndata import CapAnnDataDF, CapAnnDataUns
 
 logger = logging.getLogger(__name__)
 
