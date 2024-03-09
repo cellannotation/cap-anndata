@@ -5,9 +5,6 @@ CAP-AnnData enriches the AnnData ecosystem by offering tailored functionalities 
 
 ## Getting Started
 
-### Installation
-TODO: write up
-
 ### Running Tests
 Ensure the integrity and reliability of CAP-AnnData on your system by running the unit tests in `test/unit_test.py`.
 
