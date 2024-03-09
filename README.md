@@ -19,7 +19,7 @@ By default, `CapAnnData` does not automatically read any data. To begin working 
 
 ```python
 import h5py
-from src.cap_anndata import CapAnnData
+from cap_anndata import CapAnnData
 
 file_path = "your_data.h5ad"
 with h5py.File(file_path, 'r') as file:

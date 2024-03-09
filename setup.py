@@ -24,5 +24,5 @@ setup(
         "pandas>=2.2.0",
         "anndata>=0.10.5"
     ],
-    extras_require=["pytest>=8.0.0"]
+    extras_require={"dev": ["pytest>=8.0.0"]}
 )
