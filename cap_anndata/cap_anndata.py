@@ -68,7 +68,7 @@ class CapAnnData:
         if raw:
             # Check if raw exists first
             if "raw" not in self._file.keys():
-                logger.debug("Can't read raw.var since raw layer doesn't exist!")
+                logger.warning("Can't read raw.var since raw layer doesn't exist!")
                 return
 
             if self._raw is None:
@@ -194,7 +194,6 @@ class CapAnnData:
                 else:
                     # sparse array
                     self._obsm[entity_name] = ad.experimental.sparse_dataset(entity)
-        logger.debug(f"obsm={self._obsm}")
 
     def obsm_keys(self) -> List[str]:
         return list(self.obsm.keys())
