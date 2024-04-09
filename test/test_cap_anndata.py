@@ -289,3 +289,22 @@ def test_modify_uns():
     assert new_name in adata.uns.keys()
     assert adata.uns['field_to_expand']["key1"] == d_to_exp
     assert adata.uns['field_to_modify'] == v_to_mod
+
+
+def test_empty_obs_override():
+    """
+    especially for solving the issue:
+    https://github.com/cellannotation/cap-anndata/pull/5
+    """
+    adata = get_base_anndata()
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_modify_uns.h5ad")
+    adata.write_h5ad(file_path)
+
+    with h5py.File(file_path, 'r+') as f:
+        cap_adata = CapAnnData(f)
+        cap_adata.read_obs()
+
+        cap_adata.obs["cell_type_1"] = pd.Series(data=np.nan, index=cap_adata.obs.index, dtype="category")
+        cap_adata.obs["cell_type_new"] = pd.Series(data=np.nan, index=cap_adata.obs.index, dtype="category")
+        cap_adata.overwrite(fields=["obs"])
