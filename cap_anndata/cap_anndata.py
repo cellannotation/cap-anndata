@@ -97,6 +97,10 @@ class CapAnnData:
 
             for col in cols_to_read:
                 df[col] = read_elem(h5_group[col])
+        if df.column_order.dtype != object:
+            # empty DataFrame will have column_order as float64
+            # which leads to failure in overwrite method
+            df.column_order = df.column_order.astype(object)
         return df
 
     @staticmethod
