@@ -200,25 +200,3 @@ class CapAnnData:
 
     def _write_elem_lzf(self, dest_key: str, elem: any) -> None:
         write_elem(self._file, dest_key, elem, dataset_kwargs={"compression": "lzf"})
-
-    @staticmethod
-    @contextlib.contextmanager
-    def read_anndata_file(file_path, backed='r'):
-        """The method to read anndata file using original AnnData package"""
-        logger.debug(f"Read file {file_path} in backed mode = {backed}...")
-
-        adata = None
-        try:
-            adata = ad.read_h5ad(file_path, backed=backed)
-            logger.debug(f"Successfully read anndata file path {file_path}")
-            yield adata
-
-        except Exception as error:
-            logger.error(f"Error during read anndata file at path: {file_path}, error = {error}!")
-            raise error
-
-        finally:
-            if adata is not None:
-                if adata.isbacked:
-                    adata.file.close()
-                logger.debug("AnnData closed!")

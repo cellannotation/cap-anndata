@@ -1,20 +1,13 @@
-from cap_anndata import CapAnnData
 import anndata as ad
 import numpy as np
 import tempfile
 import os
 import h5py
 import pandas as pd
-import scipy.sparse as sp
 import pytest
 
-
-def get_base_anndata(n_rows: int = 10, n_genes: int = 10, sparse=False) -> ad.AnnData:
-    x = np.eye(n_rows, n_genes).astype(np.float32)
-    if sparse:
-        x = sp.csr_matrix(x, dtype=np.float32)
-    adata = ad.AnnData(X=x)
-    return adata
+from cap_anndata import CapAnnData
+from context import get_base_anndata
 
 
 def get_filled_anndata(n_rows: int = 10, n_genes: int = 10, sparse=False) -> ad.AnnData:
@@ -31,19 +24,6 @@ def get_filled_anndata(n_rows: int = 10, n_genes: int = 10, sparse=False) -> ad.
 
     adata.raw = adata
     return adata
-
-    
-def test_read_anndata_file():
-    adata = get_base_anndata()
-    temp_folder = tempfile.mkdtemp()
-    file_path = os.path.join(temp_folder, "test_read_anndata_file.h5ad")
-    adata.write_h5ad(file_path)
-    del adata
-
-    with CapAnnData.read_anndata_file(file_path=file_path) as adata:
-        assert adata is not None, "AnnData file must be valid!"
-
-    os.remove(file_path)
 
 
 def test_read_shape():
@@ -217,8 +197,7 @@ def test_read_obsm():
 
     with h5py.File(file_path, 'r') as f:
         cap_adata = CapAnnData(f)
-        
-        ss = []
+
         for emb in obsm_names:
             assert emb in cap_adata.obsm_keys()
             assert cap_adata.obsm[emb].shape == adata.obsm[emb].shape
