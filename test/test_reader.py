@@ -1,8 +1,8 @@
 import tempfile
 import os
 
-from reader import read_h5ad, read_directly
-from context import get_base_anndata
+from cap_anndata.reader import read_h5ad, read_directly
+from test.context import get_base_anndata
 
 
 def test_read_anndata_file():

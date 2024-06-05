@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from cap_anndata import CapAnnData
-from context import get_base_anndata
+from test.context import get_base_anndata
 
 
 def get_filled_anndata(n_rows: int = 10, n_genes: int = 10, sparse=False) -> ad.AnnData:
