@@ -18,11 +18,10 @@ Make sure Python 3.9 or newer is used, along with all requirements specified in 
 By default, `CapAnnData` does not automatically read any data. To begin working with dataframes, you need to explicitly read the data from the AnnData file. You can read the entire dataframe or select specific columns. For partial reading, provide a list of column names.
 
 ```python
-import h5py
 from cap_anndata import CapAnnData, read_h5ad
 
 file_path = "your_data.h5ad"
-with read_h5ad(file_path=file_path, edit=False):
+with read_h5ad(file_path=file_path, edit=False) as cap_adata:
     # Read all columns of 'obs'
     cap_adata.read_obs()
 
@@ -53,6 +52,7 @@ cap_adata.remove_column('col_to_remove')
 ```
 
 After modifications, you can overwrite the changes back to the AnnData file. If a value doesn't exist, it will be created.
+Note: `read_h5ad` must be called with `edit=True` argument.
 
 ```python
 # overwrite all values which were read
@@ -85,7 +85,7 @@ cap_adata.overwrite(['obs'])
 The CapAnnData package won't read any field by default. However, the `X` and `raw.X` will be linked to the backed matrices automatically upon the first request to those fields.
 
 ```python
-with h5py.File(path) as file:
+with read_h5ad(file_path=file_path, edit=False) as cap_adata:
     # self.X is None here
     cap_adata = CapAnnData(file)  
 
@@ -116,10 +116,7 @@ s_ = np.s_[mask, :5]
 By the default the CapAnnData will not read the embeddings matrix. The link to the h5py objects will be created upon the first call of the `.obsm` property. Alike the AnnData package the call like `cap_adata.obsm["X_tsne"]` will not return the in-memory matrix but will return the backed version instead. We can get the information about the name and shape of the embeddings without taking the whole matrixes in the memory!
 
 ```python
-with h5py.File(path) as file:
-    # initialization
-    cap_adata = CapAnnData(file) 
-
+with read_h5ad(file_path=file_path, edit=False) as cap_adata:
     # will return the list of strings
     obsm_keys = cap_adata.obsm_keys()  
 
@@ -136,10 +133,7 @@ with h5py.File(path) as file:
 The `CapAnnData` class will lazely link the uns section upon the first call but ***WILL NOT*** read it into memory. Instead, the dictionary of the pairs `{'key': "__NotLinkedObject"}` will be creted. It allow to get the list of keys before the actual read. To read the uns section in the memory the `.read_uns(keys)` method must be called.
 
 ```python
-with h5py.File(path) as file:
-    # initialization
-    cap_adata = CapAnnData(file) 
-
+with read_h5ad(file_path=file_path, edit=True) as cap_adata:
     # will return the keys() object
     keys = cap_adata.uns.keys()  
 
