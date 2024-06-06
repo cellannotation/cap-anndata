@@ -8,6 +8,7 @@ import pytest
 
 from cap_anndata import CapAnnData
 from test.context import get_base_anndata
+from cap_anndata.reader import read_h5ad
 
 
 def get_filled_anndata(n_rows: int = 10, n_genes: int = 10, sparse=False) -> ad.AnnData:
@@ -290,3 +291,20 @@ def test_empty_obs_override():
         cap_adata.obs["cell_type_1"] = pd.Series(data=np.nan, index=cap_adata.obs.index, dtype="category")
         cap_adata.obs["cell_type_new"] = pd.Series(data=np.nan, index=cap_adata.obs.index, dtype="category")
         cap_adata.overwrite(fields=["obs"])
+
+
+def test_obs_last_column_removal():
+    col_name = 'cell_type'
+    adata = ad.AnnData(X=np.ones(shape=(10,10), dtype=np.float32))
+    adata.obs[col_name] = col_name
+
+    temp_folder = tempfile.mkdtemp()
+    file_path = f"{temp_folder}/test.h5ad"
+    adata.write(filename=file_path)
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.read_obs()
+        cap_adata.obs.remove_column(col_name=col_name)
+        cap_adata.overwrite(['obs'])
+
+    os.remove(file_path)

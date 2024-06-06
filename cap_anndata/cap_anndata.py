@@ -145,7 +145,10 @@ class CapAnnData:
 
                 for col in entity.columns:
                     self._write_elem_lzf(f"{key}/{col}", entity[col].values)
-                self._file[key].attrs['column-order'] = entity.column_order
+
+                column_order = entity.column_order
+                if column_order.size > 1: # Refs https://github.com/cellannotation/cap-anndata/issues/6
+                    self._file[key].attrs['column-order'] = column_order
 
         if "uns" in fields:
             for key in self.uns.keys():
