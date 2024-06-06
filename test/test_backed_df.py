@@ -3,7 +3,6 @@ import numpy as np
 from cap_anndata import CapAnnDataDF
 
 
-
 def test_from_df():
     data = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
     cap_ann_data_df = CapAnnDataDF.from_df(data)
