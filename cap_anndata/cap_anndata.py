@@ -8,12 +8,21 @@ from dataclasses import dataclass
 
 from cap_anndata import CapAnnDataDF, CapAnnDataUns
 
+
 logger = logging.getLogger(__name__)
 
 X_NOTATION = Union[h5py.Dataset, ad.experimental.CSRDataset, ad.experimental.CSCDataset]
 OBSM_NOTATION = Dict[str, X_NOTATION]
 
 NotLinkedObject: Final = "__NotLinkedObject"
+
+
+def _get_shape(X) -> Tuple[int, int]:
+    if X is not None:
+        s = X.shape # tuple of numpy.int64
+        return (int(s[0]), int(s[1]))
+    else:
+        return None
 
 
 @dataclass
@@ -23,7 +32,7 @@ class RawLayer:
 
     @property
     def shape(self) -> Tuple[int, int]:
-        return self.X.shape if self.X is not None else None
+        return _get_shape(self.X)
 
 
 class CapAnnData:
@@ -158,7 +167,7 @@ class CapAnnData:
 
     @property
     def shape(self) -> tuple[int, int]:
-        return self.X.shape
+        return _get_shape(self.X)
 
     def _link_x(self) -> None:
         x = self._file["X"]

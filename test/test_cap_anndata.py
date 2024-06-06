@@ -59,8 +59,11 @@ def test_read_shape():
         shape = cap_adata.shape
     
     os.remove(file_path)
-    assert shape[0] == n_rows
-    assert shape[1] == n_genes
+
+    assert shape == (n_rows, n_genes), "Shape axis size is incorrect!"
+
+    for i in [0, 1]:
+        assert type(shape[i]) == int, "Shape axis type is wrong!"
 
 
 def test_read_df():
