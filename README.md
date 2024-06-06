@@ -19,12 +19,10 @@ By default, `CapAnnData` does not automatically read any data. To begin working 
 
 ```python
 import h5py
-from cap_anndata import CapAnnData
+from cap_anndata import CapAnnData, read_h5ad
 
 file_path = "your_data.h5ad"
-with h5py.File(file_path, 'r') as file:
-    cap_adata = CapAnnData(file)
-
+with read_h5ad(file_path=file_path, edit=False):
     # Read all columns of 'obs'
     cap_adata.read_obs()
 
