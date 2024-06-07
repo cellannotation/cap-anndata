@@ -104,7 +104,7 @@ class RawLayer(BaseLayerMatrixAndDf):
 
     def read_var(self, columns: List[str] = None, flush: bool = False) -> None:
         df = self._read_df(key="var", columns=columns)
-        if flush:
+        if self.var.empty or flush:
             self._var = df
         else:
             self._var = self._var.join(df, how="left")
@@ -158,14 +158,15 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def read_obs(self, columns: List[str] = None, flush: bool = False) -> None:
         df = self._read_df("obs", columns=columns)
-        if flush:
+        if self.obs.empty or flush:
             self._obs = df
         else:
-            self._obs = self._obs.join(df, how="left")
+            for col in df.columns:
+                self._obs[col] = df[col]
 
     def read_var(self, columns: List[str] = None, flush: bool = False) -> None:
         df = self._read_df("var", columns=columns)
-        if flush:
+        if self.var.empty or flush:
             self._var = df
         else:
             self._var = self._var.join(df, how="left")

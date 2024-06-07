@@ -54,7 +54,7 @@ def test_read_df():
         cap_adata = CapAnnData(file)
         cap_adata.read_obs()
         cap_adata.read_var()
-        cap_adata.read_var(raw=True)
+        cap_adata.raw.read_var()
 
     os.remove(file_path)
     pd.testing.assert_frame_equal(adata.obs, cap_adata.obs, check_frame_type=False)
@@ -73,7 +73,7 @@ def test_partial_read():
         cap_adata.read_obs(columns=['cell_type'])
         cap_adata.read_obs(columns=['cell_type'])
         cap_adata.read_var(columns=['dispersion'])
-        cap_adata.read_var(columns=['dispersion'], raw=True)
+        cap_adata.raw.read_var(columns=['dispersion'])
     
     os.remove(file_path)
 
@@ -110,7 +110,7 @@ def test_overwrite_df():
         ref_var = cap_adata.var.copy()
 
         # Modify 'raw.var', assuming 'raw' is also a CapAnnData
-        cap_adata.read_var(raw=True)
+        cap_adata.raw.read_var()
         cap_adata.raw.var["gene_names"] = [f"raw_new_gene_{i}" for i in range(cap_adata.raw.shape[1])]
         cap_adata.raw.var["extra_info"] = np.random.rand(cap_adata.shape[1])
         ref_raw_var = cap_adata.raw.var.copy()
