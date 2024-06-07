@@ -311,4 +311,5 @@ def test_obs_last_column_removal():
         cap_adata.read_obs()
         assert col_name not in cap_adata.obs.columns
 
+    adata = ad.read_h5ad(file_path)  # TODO: remove after fix
     os.remove(file_path)
