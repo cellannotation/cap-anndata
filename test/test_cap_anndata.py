@@ -289,34 +289,45 @@ def test_empty_obs_override():
         cap_adata.overwrite(fields=["obs"])
 
 
-def test_obs_keys():
+def test_obs_var_keys():
     adata = get_filled_anndata()
     temp_folder = tempfile.mkdtemp()
     file_path = os.path.join(temp_folder, "test_obs_keys.h5ad")
     adata.write_h5ad(file_path)
 
     with read_h5ad(file_path) as cap_adata:
-        keys = cap_adata.obs_keys()
-
-    assert keys == adata.obs_keys()
-
-    with read_h5ad(file_path) as cap_adata:
+        obs_keys_before_read = cap_adata.obs_keys()
+        var_keys_before_read = cap_adata.var_keys()
         cap_adata.read_obs()
-        keys = cap_adata.obs_keys()
+        cap_adata.read_var()
+        obs_keys_after_read = cap_adata.obs_keys()
+        var_keys_after_read = cap_adata.var_keys()
 
-    assert keys == adata.obs_keys()
+    assert obs_keys_before_read == adata.obs_keys()
+    assert obs_keys_after_read == adata.obs_keys()
+    assert var_keys_before_read == adata.var_keys()
+    assert var_keys_after_read == adata.var_keys()
     os.remove(file_path)
 
 
-def test_var_keys():
+def test_flush_read():
     adata = get_filled_anndata()
     temp_folder = tempfile.mkdtemp()
-    file_path = os.path.join(temp_folder, "test_var_keys.h5ad")
+    file_path = os.path.join(temp_folder, "test_flush_read.h5ad")
     adata.write_h5ad(file_path)
 
     with read_h5ad(file_path) as cap_adata:
-        keys = cap_adata.var_keys()
-        raw_keys = cap_adata.raw.var_keys()
+        cap_adata.read_obs(columns=["cell_type"])
+        cap_adata.obs["cell_type"] = list(range(cap_adata.shape[0]))
 
-    assert keys == adata.var_keys()
-    assert raw_keys == adata.raw.var_keys()
+        cap_adata.read_obs(columns=["number"])
+        assert cap_adata.obs.columns.size == 2
+        assert all(cap_adata.obs.cell_type.values == list(range(cap_adata.shape[0])))
+
+        cap_adata.read_obs(columns=["cell_type"])
+        pd.testing.assert_series_equal(cap_adata.obs.cell_type, adata.obs.cell_type)
+
+        cap_adata.read_obs(columns=["number"], flush=True)
+        assert cap_adata.obs.columns.size == 1
+
+    os.remove(file_path)
