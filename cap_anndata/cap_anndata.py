@@ -153,7 +153,9 @@ class CapAnnData(BaseLayerMatrixAndDf):
     @property
     def uns(self) -> CapAnnDataUns:
         if self._uns is None:
-            self._uns = CapAnnDataUns({k: NotLinkedObject for k in self._file["uns"].keys()})
+            self._uns = CapAnnDataUns(
+                {k: NotLinkedObject for k in self._file["uns"].keys()}
+            )
         return self._uns
 
     def read_obs(self, columns: List[str] = None, flush: bool = False) -> None:
@@ -176,7 +178,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             "obs": self.obs,
             "var": self.var,
             "raw.var": self.raw.var if self.raw is not None else None,
-            "uns": self.uns
+            "uns": self.uns,
         }
 
         if fields is None:
@@ -186,7 +188,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 if f not in field_to_entity.keys():
                     raise KeyError(
                         f"The field {f} is not supported! The list of suported fields are equal to supported "
-                        f"attributes of the CapAnnData class: obs, var, raw.var and uns.")
+                        f"attributes of the CapAnnData class: obs, var, raw.var and uns."
+                    )
 
         for key in ["obs", "var", "raw.var"]:
             if key in fields:
@@ -194,11 +197,11 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 if entity is None:
                     continue
 
-                key = key.replace(".", '/') if key == "raw.var" else key
+                key = key.replace(".", "/") if key == "raw.var" else key
 
                 for col in entity.columns:
                     self._write_elem_lzf(f"{key}/{col}", entity[col].values)
-                self._file[key].attrs['column-order'] = entity.column_order
+                self._file[key].attrs["column-order"] = entity.column_order
 
         if "uns" in fields:
             for key in self.uns.keys():
