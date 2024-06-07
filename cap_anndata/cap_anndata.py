@@ -16,26 +16,11 @@ OBSM_NOTATION = Dict[str, X_NOTATION]
 NotLinkedObject: Final = "__NotLinkedObject"
 
 
-@dataclass
-class RawLayer:
-    var: CapAnnDataDF = None
-    X: X_NOTATION = None
-
-    @property
-    def shape(self) -> Tuple[int, int]:
-        return self.X.shape if self.X is not None else None
-
-
-class CapAnnData:
-    def __init__(self, h5_file: h5py.File) -> None:
-        self._file: h5py.File = h5_file
-        self.obs: CapAnnDataDF = None
-        self.var: CapAnnDataDF = None
+class BaseLayerMatrixAndDf:
+    def __init__(self, file: h5py.File, path_to_content: str = "/") -> None:
+        self._file = file
+        self._path_to_content = path_to_content
         self._X: X_NOTATION = None
-        self._obsm: OBSM_NOTATION = None
-        self._uns: CapAnnDataUns = None
-        self._raw: RawLayer = None
-        self._shape: Tuple[int, int] = None
 
     @property
     def X(self) -> X_NOTATION:
@@ -43,60 +28,24 @@ class CapAnnData:
             self._link_x()
         return self._X
 
-    @property
-    def obsm(self) -> OBSM_NOTATION:
-        if self._obsm is None:
-            self._link_obsm()
-        return self._obsm
-
-    @property
-    def raw(self) -> RawLayer:
-        if self._raw is None:
-            self._link_raw_x()
-        return self._raw
-
-    @property
-    def uns(self) -> CapAnnDataUns:
-        if self._uns is None:
-            self._uns = CapAnnDataUns({k: NotLinkedObject for k in self._file["uns"].keys()})
-        return self._uns
-
-    def read_obs(self, columns: List[str] = None) -> None:
-        self.obs = self._read_df(self._file["obs"], columns=columns)
-
-    def read_var(self, columns: List[str] = None, raw: bool = False) -> None:
-        if raw:
-            # Check if raw exists first
-            if "raw" not in self._file.keys():
-                logger.warning("Can't read raw.var since raw layer doesn't exist!")
-                return
-
-            if self._raw is None:
-                self._raw = RawLayer()
-                self._link_raw_x()
-
-            key = "raw/var"
-            self._raw.var = self._read_df(self._file[key], columns=columns)
+    def _link_x(self) -> None:
+        x = self._file[self._path_to_content + "X"]
+        if isinstance(x, h5py.Dataset):
+            # dense X
+            self._X = x
         else:
-            key = "var"
-            self.var = self._read_df(self._file[key], columns=columns)
+            # sparse dataset
+            self._X = ad.experimental.sparse_dataset(x)
 
-    def _read_df(self, h5_group: h5py.Group, columns: List[str]) -> CapAnnDataDF:
-        column_order = self._read_attr(h5_group, "column-order")
+    @property
+    def shape(self) -> Tuple[int, int]:
+        return self.X.shape if self.X is not None else None
 
-        if columns is None:
-            # read whole df
-            df = CapAnnDataDF.from_df(read_elem(h5_group), column_order=column_order)
-        else:
-            cols_to_read = [c for c in columns if c in column_order]
-            df = CapAnnDataDF()
-            df.column_order = column_order
-
-            index_col = self._read_attr(h5_group, "_index")
-            df.index = read_elem(h5_group[index_col])
-
-            for col in cols_to_read:
-                df[col] = read_elem(h5_group[col])
+    def _lazy_df_load(self, key: str) -> CapAnnDataDF:
+        df = CapAnnDataDF()
+        attribute = self._path_to_content + key
+        column_order = self._read_attr(self._file[attribute], "column-order")
+        df.column_order = column_order
         if df.column_order.dtype != object:
             # empty DataFrame will have column_order as float64
             # which leads to failure in overwrite method
@@ -109,6 +58,117 @@ class CapAnnData:
         if attr_name not in attrs.keys():
             raise KeyError(f"The {attr_name} doesn't exist!")
         return attrs[attr_name]
+
+    def _read_df(self, key: str, columns: List[str]) -> CapAnnDataDF:
+        group_path = self._path_to_content + key
+        if group_path not in self._file.keys():
+            raise ValueError(f"The group {group_path} doesn't exist in the file!")
+
+        h5_group = self._file[group_path]
+
+        column_order = self._read_attr(h5_group, "column-order")
+
+        if columns is None:
+            # read whole df
+            df = CapAnnDataDF.from_df(read_elem(h5_group), column_order=column_order)
+        else:
+            cols_to_read = [c for c in columns if c in column_order]
+            df = CapAnnDataDF()
+            df.column_order = column_order
+            index_col = self._read_attr(h5_group, "_index")
+            df.index = read_elem(h5_group[index_col])
+
+            for col in cols_to_read:
+                df[col] = read_elem(h5_group[col])
+
+        if df.column_order.dtype != object:
+            # empty DataFrame will have column_order as float64
+            # which leads to failure in overwrite method
+            df.column_order = df.column_order.astype(object)
+        return df
+
+    def _write_elem_lzf(self, dest_key: str, elem: any) -> None:
+        write_elem(self._file, dest_key, elem, dataset_kwargs={"compression": "lzf"})
+
+
+class RawLayer(BaseLayerMatrixAndDf):
+    def __init__(self, h5_file: h5py.File):
+        super().__init__(h5_file, path_to_content="/raw/")
+        self._var: CapAnnDataDF = None
+
+    @property
+    def var(self) -> CapAnnDataDF:
+        if self._var is None:
+            self._var = self._lazy_df_load("var")
+        return self._var
+
+    def read_var(self, columns: List[str] = None, flush: bool = False) -> None:
+        df = self._read_df(key="var", columns=columns)
+        if flush:
+            self._var = df
+        else:
+            self._var = self._var.join(df, how="left")
+
+
+class CapAnnData(BaseLayerMatrixAndDf):
+    def __init__(self, h5_file: h5py.File) -> None:
+        super().__init__(h5_file, path_to_content="/")
+        self._file: h5py.File = h5_file
+        self._obs: CapAnnDataDF = None
+        self._var: CapAnnDataDF = None
+        self._X: X_NOTATION = None
+        self._obsm: OBSM_NOTATION = None
+        self._uns: CapAnnDataUns = None
+        self._raw: RawLayer = None
+        self._shape: Tuple[int, int] = None
+
+    @property
+    def obs(self) -> CapAnnDataDF:
+        if self._obs is None:
+            self._obs = self._lazy_df_load("obs")
+        return self._obs
+
+    @property
+    def var(self) -> CapAnnDataDF:
+        if self._var is None:
+            self._var = self._lazy_df_load("var")
+        return self._var
+
+    @property
+    def obsm(self) -> OBSM_NOTATION:
+        if self._obsm is None:
+            self._link_obsm()
+        return self._obsm
+
+    @property
+    def raw(self) -> RawLayer:
+        if self._raw is None:
+            if "raw" not in self._file.keys():
+                logger.warning("Can't read raw.var since raw layer doesn't exist!")
+                return
+
+            self._raw = RawLayer(self._file)
+        return self._raw
+
+    @property
+    def uns(self) -> CapAnnDataUns:
+        if self._uns is None:
+            self._uns = CapAnnDataUns({k: NotLinkedObject for k in self._file["uns"].keys()})
+        return self._uns
+
+    def read_obs(self, columns: List[str] = None, flush: bool = False) -> None:
+        df = self._read_df("obs", columns=columns)
+        if flush:
+            self._obs = df
+        else:
+            self._obs = self._obs.join(df, how="left")
+
+    def read_var(self, columns: List[str] = None, flush: bool = False) -> None:
+        df = self._read_df("var", columns=columns)
+        if flush:
+            self._var = df
+        else:
+            self._var = self._var.join(df, how="left")
 
     def overwrite(self, fields: List[str] = None) -> None:
         field_to_entity = {
@@ -124,7 +184,8 @@ class CapAnnData:
             for f in fields:
                 if f not in field_to_entity.keys():
                     raise KeyError(
-                        f"The field {f} is not supported! The list of suported fields are equal to supported attributes of the CapAnnData class: obs, var, raw.var and uns.")
+                        f"The field {f} is not supported! The list of suported fields are equal to supported "
+                        f"attributes of the CapAnnData class: obs, var, raw.var and uns.")
 
         for key in ["obs", "var", "raw.var"]:
             if key in fields:
@@ -156,32 +217,6 @@ class CapAnnData:
                 sourse = self._file[f"uns/{key}"]
                 self.uns[key] = read_elem(sourse)
 
-    @property
-    def shape(self) -> tuple[int, int]:
-        return self.X.shape
-
-    def _link_x(self) -> None:
-        x = self._file["X"]
-        if isinstance(x, h5py.Dataset):
-            # dense X
-            self._X = x
-        else:
-            # sparse dataset
-            self._X = ad.experimental.sparse_dataset(x)
-
-    def _link_raw_x(self) -> None:
-        if "raw" in self._file.keys():
-            if self._raw is None:
-                self._raw = RawLayer()
-
-            raw_x = self._file["raw/X"]
-            if isinstance(raw_x, h5py.Dataset):
-                # dense X
-                self._raw.X = raw_x
-            else:
-                # sparse dataset
-                self._raw.X = ad.experimental.sparse_dataset(raw_x)
-
     def _link_obsm(self) -> None:
         self._obsm = {}
         if "obsm" in self._file.keys():
@@ -198,5 +233,3 @@ class CapAnnData:
     def obsm_keys(self) -> List[str]:
         return list(self.obsm.keys())
 
-    def _write_elem_lzf(self, dest_key: str, elem: any) -> None:
-        write_elem(self._file, dest_key, elem, dataset_kwargs={"compression": "lzf"})
