@@ -6,7 +6,7 @@ import h5py
 import pandas as pd
 import pytest
 
-from cap_anndata import CapAnnData
+from cap_anndata import CapAnnData, read_h5ad
 from test.context import get_base_anndata
 
 
@@ -237,7 +237,7 @@ def test_read_uns():
 def test_modify_uns():
     adata = get_base_anndata()
     adata.uns = {
-        "field_to_ingore": list(range(100)),
+        "field_to_ignore": list(range(100)),
         "field_to_rename": "value",
         "field_to_expand": {"key1": {}},
         "field_to_modify": {"a": "b"}
@@ -287,3 +287,36 @@ def test_empty_obs_override():
         cap_adata.obs["cell_type_1"] = pd.Series(data=np.nan, index=cap_adata.obs.index, dtype="category")
         cap_adata.obs["cell_type_new"] = pd.Series(data=np.nan, index=cap_adata.obs.index, dtype="category")
         cap_adata.overwrite(fields=["obs"])
+
+
+def test_obs_keys():
+    adata = get_filled_anndata()
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_obs_keys.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path) as cap_adata:
+        keys = cap_adata.obs_keys()
+
+    assert keys == adata.obs_keys()
+
+    with read_h5ad(file_path) as cap_adata:
+        cap_adata.read_obs()
+        keys = cap_adata.obs_keys()
+
+    assert keys == adata.obs_keys()
+    os.remove(file_path)
+
+
+def test_var_keys():
+    adata = get_filled_anndata()
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_var_keys.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path) as cap_adata:
+        keys = cap_adata.var_keys()
+        raw_keys = cap_adata.raw.var_keys()
+
+    assert keys == adata.var_keys()
+    assert raw_keys == adata.raw.var_keys()

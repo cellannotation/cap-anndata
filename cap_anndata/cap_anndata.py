@@ -234,3 +234,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
     def obsm_keys(self) -> List[str]:
         return list(self.obsm.keys())
 
+    def obs_keys(self) -> List[str]:
+        return self.obs.column_order.tolist()
+
+    def var_keys(self) -> List[str]:
+        return self.var.column_order.tolist()
