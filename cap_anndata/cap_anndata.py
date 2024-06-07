@@ -1,6 +1,6 @@
 import logging
-import contextlib
 import anndata as ad
+import numpy as np
 import h5py
 from typing import List, Union, Dict, Tuple, Final
 from anndata._io.specs import read_elem, write_elem
@@ -19,8 +19,7 @@ NotLinkedObject: Final = "__NotLinkedObject"
 
 def _get_shape(X) -> Tuple[int, int]:
     if X is not None:
-        s = X.shape # tuple of numpy.int64
-        return (int(s[0]), int(s[1]))
+        return tuple(map(int, X.shape))
     else:
         return None
 
@@ -91,7 +90,7 @@ class CapAnnData:
             self.var = self._read_df(self._file[key], columns=columns)
 
     def _read_df(self, h5_group: h5py.Group, columns: List[str]) -> CapAnnDataDF:
-        column_order = self._read_attr(h5_group, "column-order")
+        column_order = self._read_attr(h5_group, "column-order", False)
 
         if columns is None:
             # read whole df
@@ -113,10 +112,13 @@ class CapAnnData:
         return df
 
     @staticmethod
-    def _read_attr(obj: Union[h5py.Group, h5py.Dataset], attr_name: str) -> any:
+    def _read_attr(obj: Union[h5py.Group, h5py.Dataset], attr_name: str, raise_exception: bool = True) -> any:
         attrs = dict(obj.attrs)
         if attr_name not in attrs.keys():
-            raise KeyError(f"The {attr_name} doesn't exist!")
+            if raise_exception:
+                raise KeyError(f"The {attr_name} doesn't exist!")
+            else: # Refs https://github.com/cellannotation/cap-anndata/issues/6
+                return np.array([])
         return attrs[attr_name]
 
     def overwrite(self, fields: List[str] = None) -> None:
@@ -147,8 +149,10 @@ class CapAnnData:
                     self._write_elem_lzf(f"{key}/{col}", entity[col].values)
 
                 column_order = entity.column_order
-                if column_order.size > 1: # Refs https://github.com/cellannotation/cap-anndata/issues/6
+                if column_order.size > 0:
                     self._file[key].attrs['column-order'] = column_order
+                else: # Refs https://github.com/cellannotation/cap-anndata/issues/6
+                    self._write_elem_lzf(f"{key}", [])
 
         if "uns" in fields:
             for key in self.uns.keys():
