@@ -302,14 +302,18 @@ def test_obs_last_column_removal():
     file_path = f"{temp_folder}/test.h5ad"
     adata.write(filename=file_path)
 
+    # Remove last column
     with read_h5ad(file_path, edit=True) as cap_adata:
         cap_adata.read_obs()
         cap_adata.obs.remove_column(col_name=col_name)
         cap_adata.overwrite(['obs'])
 
+    # Check no any issues on read with updated file
     with read_h5ad(file_path) as cap_adata:
         cap_adata.read_obs()
         assert col_name not in cap_adata.obs.columns
 
-    adata = ad.read_h5ad(file_path)  # TODO: remove after fix
+    # Check compatability with anndata
+    adata = ad.read_h5ad(file_path)
+
     os.remove(file_path)
