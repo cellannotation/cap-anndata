@@ -4,7 +4,6 @@ import numpy as np
 import h5py
 from typing import List, Union, Dict, Tuple, Final
 from anndata._io.specs import read_elem, write_elem
-from dataclasses import dataclass
 
 from cap_anndata import CapAnnDataDF, CapAnnDataUns
 
@@ -112,7 +111,8 @@ class RawLayer(BaseLayerMatrixAndDf):
         if self.var.empty or flush:
             self._var = df
         else:
-            self._var = self._var.join(df, how="left")
+            for col in df.columns:
+                self._var[col] = df[col]
 
 
 class CapAnnData(BaseLayerMatrixAndDf):
@@ -176,7 +176,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
         if self.var.empty or flush:
             self._var = df
         else:
-            self._var = self._var.join(df, how="left")
+            for col in df.columns:
+                self._var[col] = df[col]
 
     def overwrite(self, fields: List[str] = None) -> None:
         field_to_entity = {
@@ -192,7 +193,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for f in fields:
                 if f not in field_to_entity.keys():
                     raise KeyError(
-                        f"The field {f} is not supported! The list of suported fields are equal to supported "
+                        f"The field {f} is not supported! The list of supported fields are equal to supported "
                         f"attributes of the CapAnnData class: obs, var, raw.var and uns."
                     )
 
@@ -208,7 +209,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     self._write_elem_lzf(f"{key}/{col}", entity[col].values)
 
                 column_order = entity.column_order
-                if column_order.size == 0: # Refs https://github.com/cellannotation/cap-anndata/issues/6
+                if column_order.size == 0:  # Refs https://github.com/cellannotation/cap-anndata/issues/6
                     column_order = np.array([], dtype=np.float64)
                 self._file[key].attrs['column-order'] = column_order
 
