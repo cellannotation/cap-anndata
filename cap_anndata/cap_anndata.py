@@ -1,12 +1,13 @@
 import logging
-import contextlib
 import anndata as ad
+import numpy as np
 import h5py
 from typing import List, Union, Dict, Tuple, Final
 from anndata._io.specs import read_elem, write_elem
 from dataclasses import dataclass
 
 from cap_anndata import CapAnnDataDF, CapAnnDataUns
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,13 @@ OBSM_NOTATION = Dict[str, X_NOTATION]
 NotLinkedObject: Final = "__NotLinkedObject"
 
 
+def _get_shape(X) -> Tuple[int, int]:
+    if X is not None:
+        return tuple(map(int, X.shape))
+    else:
+        return None
+
+
 @dataclass
 class RawLayer:
     var: CapAnnDataDF = None
@@ -23,7 +31,7 @@ class RawLayer:
 
     @property
     def shape(self) -> Tuple[int, int]:
-        return self.X.shape if self.X is not None else None
+        return _get_shape(self.X)
 
 
 class CapAnnData:
@@ -136,7 +144,11 @@ class CapAnnData:
 
                 for col in entity.columns:
                     self._write_elem_lzf(f"{key}/{col}", entity[col].values)
-                self._file[key].attrs['column-order'] = entity.column_order
+
+                column_order = entity.column_order
+                if column_order.size == 0: # Refs https://github.com/cellannotation/cap-anndata/issues/6
+                    column_order = np.array([], dtype=np.float64)
+                self._file[key].attrs['column-order'] = column_order
 
         if "uns" in fields:
             for key in self.uns.keys():
@@ -158,7 +170,7 @@ class CapAnnData:
 
     @property
     def shape(self) -> tuple[int, int]:
-        return self.X.shape
+        return _get_shape(self.X)
 
     def _link_x(self) -> None:
         x = self._file["X"]
