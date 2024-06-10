@@ -7,6 +7,7 @@ import pytest
 
 from cap_anndata import read_h5ad
 from test.context import get_base_anndata
+from cap_anndata.reader import read_h5ad
 
 
 def get_filled_anndata(n_rows: int = 10, n_genes: int = 10, sparse=False) -> ad.AnnData:
@@ -37,8 +38,11 @@ def test_read_shape():
         shape = cap_adata.shape
 
     os.remove(file_path)
-    assert shape[0] == n_rows
-    assert shape[1] == n_genes
+
+    assert shape == (n_rows, n_genes), "Shape axis size is incorrect!"
+
+    for i in [0, 1]:
+        assert type(shape[i]) == int, "Shape axis type is wrong!"
 
 
 def test_read_df():
@@ -337,5 +341,28 @@ def test_flush_read():
 
         cap_adata.read_obs(columns=["number"], flush=True)
         assert cap_adata.obs.columns.size == 1
+    os.remove(file_path)
 
+def test_obs_last_column_removal():
+    col_name = 'cell_type'
+    adata = ad.AnnData(X=np.ones(shape=(10,10), dtype=np.float32))
+    adata.obs[col_name] = col_name
+
+    temp_folder = tempfile.mkdtemp()
+    file_path = f"{temp_folder}/test.h5ad"
+    adata.write(filename=file_path)
+
+    # Remove last column
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.read_obs()
+        cap_adata.obs.remove_column(col_name=col_name)
+        cap_adata.overwrite(['obs'])
+
+    # Check no any issues on read with updated file
+    with read_h5ad(file_path) as cap_adata:
+        cap_adata.read_obs()
+        assert col_name not in cap_adata.obs.columns
+
+    # Check compatability with anndata
+    adata = ad.read_h5ad(file_path)
     os.remove(file_path)

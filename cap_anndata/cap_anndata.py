@@ -1,12 +1,13 @@
 import logging
-import contextlib
 import anndata as ad
+import numpy as np
 import h5py
 from typing import List, Union, Dict, Tuple, Final
 from anndata._io.specs import read_elem, write_elem
 from dataclasses import dataclass
 
 from cap_anndata import CapAnnDataDF, CapAnnDataUns
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,11 @@ class BaseLayerMatrixAndDf:
 
     @property
     def shape(self) -> Tuple[int, int]:
-        return self.X.shape if self.X is not None else None
+        if self.X is not None:
+            shape = tuple(map(int, self.X.shape))
+        else:
+            shape = None
+        return shape
 
     def _lazy_df_load(self, key: str) -> CapAnnDataDF:
         df = CapAnnDataDF()
@@ -201,7 +206,11 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
                 for col in entity.columns:
                     self._write_elem_lzf(f"{key}/{col}", entity[col].values)
-                self._file[key].attrs["column-order"] = entity.column_order
+
+                column_order = entity.column_order
+                if column_order.size == 0: # Refs https://github.com/cellannotation/cap-anndata/issues/6
+                    column_order = np.array([], dtype=np.float64)
+                self._file[key].attrs['column-order'] = column_order
 
         if "uns" in fields:
             for key in self.uns.keys():
