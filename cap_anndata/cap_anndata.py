@@ -94,6 +94,14 @@ class BaseLayerMatrixAndDf:
     def _write_elem_lzf(self, dest_key: str, elem: any) -> None:
         write_elem(self._file, dest_key, elem, dataset_kwargs={"compression": "lzf"})
 
+    def _validate_cap_df(self, cap_df: CapAnnDataDF) -> None:
+        if not isinstance(cap_df, CapAnnDataDF):
+            raise ValueError(f"The input should be an instance of CapAnnDataDF class but {type(cap_df)} given!")
+
+        if cap_df.shape[0] != self.shape[0]:
+            raise ValueError("The number of rows in the input DataFrame should be equal to the number of rows in the "
+                             "AnnData object!")
+
 
 class RawLayer(BaseLayerMatrixAndDf):
     def __init__(self, h5_file: h5py.File):
@@ -105,6 +113,11 @@ class RawLayer(BaseLayerMatrixAndDf):
         if self._var is None:
             self._var = self._lazy_df_load("var")
         return self._var
+
+    @var.setter
+    def var(self, cap_df: CapAnnDataDF) -> None:
+        self._validate_cap_df(cap_df)
+        self._var = cap_df
 
     def read_var(self, columns: List[str] = None, reset: bool = False) -> None:
         df = self._read_df(key="var", columns=columns)
@@ -133,11 +146,21 @@ class CapAnnData(BaseLayerMatrixAndDf):
             self._obs = self._lazy_df_load("obs")
         return self._obs
 
+    @obs.setter
+    def obs(self, cap_df: CapAnnDataDF) -> None:
+        self._validate_cap_df(cap_df)
+        self._obs = cap_df
+
     @property
     def var(self) -> CapAnnDataDF:
         if self._var is None:
             self._var = self._lazy_df_load("var")
         return self._var
+
+    @var.setter
+    def var(self, cap_df: CapAnnDataDF) -> None:
+        self._validate_cap_df(cap_df)
+        self._var = cap_df
 
     @property
     def obsm(self) -> OBSM_NOTATION:
@@ -252,3 +275,5 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def var_keys(self) -> List[str]:
         return self.var.column_order.tolist()
+
+

@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import pytest
 
-from cap_anndata import read_h5ad
+from cap_anndata import CapAnnDataDF
 from test.context import get_base_anndata
 from cap_anndata.reader import read_h5ad
 
@@ -24,6 +24,14 @@ def get_filled_anndata(n_rows: int = 10, n_genes: int = 10, sparse=False) -> ad.
 
     adata.raw = adata
     return adata
+
+
+def save_filled_anndata(file_name: str, n_rows: int = 10, n_genes: int = 10, sparse=False) -> str:
+    adata = get_filled_anndata(n_rows, n_genes, sparse)
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, file_name)
+    adata.write_h5ad(file_path)
+    return file_path
 
 
 def test_read_shape():
@@ -350,7 +358,7 @@ def test_obs_last_column_removal():
     adata.obs[col_name] = col_name
 
     temp_folder = tempfile.mkdtemp()
-    file_path = f"{temp_folder}/test.h5ad"
+    file_path = os.path.join(temp_folder, "test_obs_last_column_removal.h5ad")
     adata.write(filename=file_path)
 
     # Remove last column
@@ -367,3 +375,20 @@ def test_obs_last_column_removal():
     # Check compatability with anndata
     adata = ad.read_h5ad(file_path)
     os.remove(file_path)
+
+
+def test_obs_setter():
+    adata = get_filled_anndata()
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_obs_setter.h5ad")
+    adata.write(filename=file_path)
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.read_obs()
+        assert isinstance(cap_adata.obs, CapAnnDataDF)
+        new_obs = cap_adata.obs.copy()
+        new_obs["new_column"] = "new_value"
+
+        cap_adata.obs = new_obs
+
+
