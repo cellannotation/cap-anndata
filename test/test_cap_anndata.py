@@ -2,11 +2,10 @@ import anndata as ad
 import numpy as np
 import tempfile
 import os
-import h5py
 import pandas as pd
 import pytest
 
-from cap_anndata import CapAnnData
+from cap_anndata import read_h5ad
 from test.context import get_base_anndata
 from cap_anndata.reader import read_h5ad
 
@@ -35,10 +34,9 @@ def test_read_shape():
     file_path = os.path.join(temp_folder, "test_read_shape.h5ad")
     adata.write_h5ad(file_path)
 
-    with h5py.File(file_path) as file:
-        cap_adata = CapAnnData(file)
+    with read_h5ad(file_path) as cap_adata:
         shape = cap_adata.shape
-    
+
     os.remove(file_path)
 
     assert shape == (n_rows, n_genes), "Shape axis size is incorrect!"
@@ -54,16 +52,17 @@ def test_read_df():
 
     adata.write_h5ad(file_path)
 
-    with h5py.File(file_path, 'r') as file:
-        cap_adata = CapAnnData(file)
+    with read_h5ad(file_path) as cap_adata:
         cap_adata.read_obs()
         cap_adata.read_var()
-        cap_adata.read_var(raw=True)
+        cap_adata.raw.read_var()
 
     os.remove(file_path)
     pd.testing.assert_frame_equal(adata.obs, cap_adata.obs, check_frame_type=False)
     pd.testing.assert_frame_equal(adata.var, cap_adata.var, check_frame_type=False)
-    pd.testing.assert_frame_equal(adata.raw.var, cap_adata.raw.var, check_frame_type=False)
+    pd.testing.assert_frame_equal(
+        adata.raw.var, cap_adata.raw.var, check_frame_type=False
+    )
 
 
 def test_partial_read():
@@ -72,13 +71,12 @@ def test_partial_read():
     file_path = os.path.join(temp_folder, "test_partial_read.h5ad")
     adata.write_h5ad(file_path)
 
-    with h5py.File(file_path, 'r') as file:
-        cap_adata = CapAnnData(file)
-        cap_adata.read_obs(columns=['cell_type'])
-        cap_adata.read_obs(columns=['cell_type'])
-        cap_adata.read_var(columns=['dispersion'])
-        cap_adata.read_var(columns=['dispersion'], raw=True)
-    
+    with read_h5ad(file_path) as cap_adata:
+        cap_adata.read_obs(columns=["cell_type"])
+        cap_adata.read_obs(columns=["cell_type"])
+        cap_adata.read_var(columns=["dispersion"])
+        cap_adata.raw.read_var(columns=["dispersion"])
+
     os.remove(file_path)
 
     assert len(adata.obs.columns) == len(cap_adata.obs.column_order)
@@ -100,41 +98,54 @@ def test_overwrite_df():
     file_path = os.path.join(temp_folder, "test_overwrite_df.h5ad")
     adata.write_h5ad(file_path)
 
-    with h5py.File(file_path, 'r+') as file:
-        cap_adata = CapAnnData(file)
+    with read_h5ad(file_path, edit=True) as cap_adata:
         cap_adata.read_obs(columns=["cell_type"])
-        cap_adata.obs["cell_type"] = [f"new_cell_type_{i%2}" for i in range(cap_adata.shape[0])]
+        cap_adata.obs["cell_type"] = [
+            f"new_cell_type_{i%2}" for i in range(cap_adata.shape[0])
+        ]
         cap_adata.obs["const_str"] = "some string"
         ref_obs = cap_adata.obs.copy()
 
         # Modify 'var'
         cap_adata.read_var()
-        cap_adata.var["gene_names"] = [f"new_gene_{i}" for i in range(cap_adata.shape[1])]
+        cap_adata.var["gene_names"] = [
+            f"new_gene_{i}" for i in range(cap_adata.shape[1])
+        ]
         cap_adata.var["extra_info"] = np.random.rand(cap_adata.shape[1])
         ref_var = cap_adata.var.copy()
 
         # Modify 'raw.var', assuming 'raw' is also a CapAnnData
-        cap_adata.read_var(raw=True)
-        cap_adata.raw.var["gene_names"] = [f"raw_new_gene_{i}" for i in range(cap_adata.raw.shape[1])]
+        cap_adata.raw.read_var()
+        cap_adata.raw.var["gene_names"] = [
+            f"raw_new_gene_{i}" for i in range(cap_adata.raw.shape[1])
+        ]
         cap_adata.raw.var["extra_info"] = np.random.rand(cap_adata.shape[1])
         ref_raw_var = cap_adata.raw.var.copy()
 
-        cap_adata.overwrite(['obs', 'var', 'raw.var'])
+        cap_adata.overwrite(["obs", "var", "raw.var"])
 
     adata = ad.read_h5ad(file_path)
     os.remove(file_path)
-    
+
     # Assert changes in 'obs'
     assert all([c in adata.obs.columns for c in ref_obs.columns])
-    pd.testing.assert_frame_equal(ref_obs, adata.obs[ref_obs.columns.to_list()], check_frame_type=False)
+    pd.testing.assert_frame_equal(
+        ref_obs, adata.obs[ref_obs.columns.to_list()], check_frame_type=False
+    )
 
     # Assert changes in 'var'
     assert all([c in adata.var.columns for c in ref_var.columns])
-    pd.testing.assert_frame_equal(ref_var, adata.var[ref_var.columns.to_list()], check_frame_type=False)
+    pd.testing.assert_frame_equal(
+        ref_var, adata.var[ref_var.columns.to_list()], check_frame_type=False
+    )
 
     # Assert changes in 'raw.var'
     assert all([c in adata.raw.var.columns for c in ref_raw_var.columns])
-    pd.testing.assert_frame_equal(ref_raw_var, adata.raw.var[ref_raw_var.columns.to_list()], check_frame_type=False)
+    pd.testing.assert_frame_equal(
+        ref_raw_var,
+        adata.raw.var[ref_raw_var.columns.to_list()],
+        check_frame_type=False,
+    )
 
 
 @pytest.mark.parametrize("sparse", [False, True])
@@ -154,11 +165,10 @@ def test_link_x(sparse, vertical_slice):
         # slice over var or obs
         s_ = np.s_[:, 0:5] if vertical_slice else np.s_[0:5, :]
 
-    with h5py.File(file_path, 'r') as file:
-        cap_adata = CapAnnData(file)
+    with read_h5ad(file_path) as cap_adata:
         x = cap_adata.X[s_]
         raw_x = cap_adata.raw.X[s_]
-    
+
     os.remove(file_path)
     if sparse:
         assert np.allclose(adata.X.A[s_], x.A)
@@ -178,8 +188,7 @@ def test_shape(sparse):
     file_path = os.path.join(temp_folder, "test_shape.h5ad")
     adata.write_h5ad(file_path)
 
-    with h5py.File(file_path) as file:
-        cap_adata = CapAnnData(file)
+    with read_h5ad(file_path) as cap_adata:
         shape = cap_adata.shape
         shape_raw = cap_adata.raw.shape
 
@@ -199,13 +208,11 @@ def test_read_obsm():
     file_path = os.path.join(temp_folder, "test_read_obsm.h5ad")
     adata.write_h5ad(file_path)
 
-    with h5py.File(file_path, 'r') as f:
-        cap_adata = CapAnnData(f)
-
+    with read_h5ad(file_path) as cap_adata:
         for emb in obsm_names:
             assert emb in cap_adata.obsm_keys()
             assert cap_adata.obsm[emb].shape == adata.obsm[emb].shape
-        
+
         x_1 = cap_adata.obsm[obsm_names[0]][:]
         x_2 = cap_adata.obsm[obsm_names[1]][:]
 
@@ -218,18 +225,16 @@ def test_read_uns():
     adata = get_base_anndata()
     key1, key2 = "key1", "key2"
     keys = (key1, key2)
-    
+
     adata.uns = {k: {k: k} for k in keys}
     temp_folder = tempfile.mkdtemp()
     file_path = os.path.join(temp_folder, "test_read_uns.h5ad")
     adata.write_h5ad(file_path)
 
-    with h5py.File(file_path, 'r') as f:
-        cap_adata = CapAnnData(f)
-
+    with read_h5ad(file_path) as cap_adata:
         for k in keys:
             assert k in cap_adata.uns
-        
+
         cap_adata.read_uns(keys=[key1])
 
         assert cap_adata.uns[key1] == adata.uns[key1]  # connected
@@ -241,10 +246,10 @@ def test_read_uns():
 def test_modify_uns():
     adata = get_base_anndata()
     adata.uns = {
-        "field_to_ingore": list(range(100)),
+        "field_to_ignore": list(range(100)),
         "field_to_rename": "value",
         "field_to_expand": {"key1": {}},
-        "field_to_modify": {"a": "b"}
+        "field_to_modify": {"a": "b"},
     }
     new_name = "renamed_field"
     d_to_exp = {"sub_key1": "v1", "sub_key2": "v2"}
@@ -254,24 +259,24 @@ def test_modify_uns():
     file_path = os.path.join(temp_folder, "test_modify_uns.h5ad")
     adata.write_h5ad(file_path)
 
-    with h5py.File(file_path, 'r+') as f:
-        cap_adata = CapAnnData(f)
-
-        cap_adata.read_uns(keys=["field_to_rename", "field_to_expand", "field_to_modify"])
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.read_uns(
+            keys=["field_to_rename", "field_to_expand", "field_to_modify"]
+        )
 
         cap_adata.uns[new_name] = cap_adata.uns.pop("field_to_rename")
         cap_adata.uns["field_to_expand"]["key1"] = d_to_exp
         cap_adata.uns["field_to_modify"] = v_to_mod
 
-        cap_adata.overwrite(['uns'])
-    
+        cap_adata.overwrite(["uns"])
+
     adata = ad.read_h5ad(file_path)
 
     assert adata.uns is not None
     assert len(adata.uns.keys()) == 4
     assert new_name in adata.uns.keys()
-    assert adata.uns['field_to_expand']["key1"] == d_to_exp
-    assert adata.uns['field_to_modify'] == v_to_mod
+    assert adata.uns["field_to_expand"]["key1"] == d_to_exp
+    assert adata.uns["field_to_modify"] == v_to_mod
 
 
 def test_empty_obs_override():
@@ -284,13 +289,59 @@ def test_empty_obs_override():
     file_path = os.path.join(temp_folder, "test_modify_uns.h5ad")
     adata.write_h5ad(file_path)
 
-    with h5py.File(file_path, 'r+') as f:
-        cap_adata = CapAnnData(f)
+    with read_h5ad(file_path, edit=True) as cap_adata:
         cap_adata.read_obs()
 
-        cap_adata.obs["cell_type_1"] = pd.Series(data=np.nan, index=cap_adata.obs.index, dtype="category")
-        cap_adata.obs["cell_type_new"] = pd.Series(data=np.nan, index=cap_adata.obs.index, dtype="category")
+        cap_adata.obs["cell_type_1"] = pd.Series(
+            data=np.nan, index=cap_adata.obs.index, dtype="category"
+        )
+        cap_adata.obs["cell_type_new"] = pd.Series(
+            data=np.nan, index=cap_adata.obs.index, dtype="category"
+        )
         cap_adata.overwrite(fields=["obs"])
+
+
+def test_obs_var_keys():
+    adata = get_filled_anndata()
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_obs_keys.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path) as cap_adata:
+        obs_keys_before_read = cap_adata.obs_keys()
+        var_keys_before_read = cap_adata.var_keys()
+        cap_adata.read_obs()
+        cap_adata.read_var()
+        obs_keys_after_read = cap_adata.obs_keys()
+        var_keys_after_read = cap_adata.var_keys()
+
+    assert obs_keys_before_read == adata.obs_keys()
+    assert obs_keys_after_read == adata.obs_keys()
+    assert var_keys_before_read == adata.var_keys()
+    assert var_keys_after_read == adata.var_keys()
+    os.remove(file_path)
+
+
+def test_reset_read():
+    adata = get_filled_anndata()
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_flush_read.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path) as cap_adata:
+        cap_adata.read_obs(columns=["cell_type"])
+        cap_adata.obs["cell_type"] = list(range(cap_adata.shape[0]))
+
+        cap_adata.read_obs(columns=["number"])
+        assert cap_adata.obs.columns.size == 2
+        assert all(cap_adata.obs.cell_type.values == list(range(cap_adata.shape[0])))
+
+        cap_adata.read_obs(columns=["cell_type"])
+        pd.testing.assert_series_equal(cap_adata.obs.cell_type, adata.obs.cell_type)
+
+        cap_adata.read_obs(columns=["number"], reset=True)
+        assert cap_adata.obs.columns.size == 1
+    os.remove(file_path)
 
 
 def test_obs_last_column_removal():
@@ -315,5 +366,4 @@ def test_obs_last_column_removal():
 
     # Check compatability with anndata
     adata = ad.read_h5ad(file_path)
-
     os.remove(file_path)

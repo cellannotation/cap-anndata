@@ -5,38 +5,72 @@ CAP-AnnData enriches the AnnData ecosystem by offering tailored functionalities 
 
 ## Getting Started
 
+### Installation
+Install CAP-AnnData via pip:
+
+```commandline
+pip install -U cap-anndata
+```
+
 ### Running Tests
-Ensure the integrity and reliability of CAP-AnnData on your system by running the unit tests in `test/unit_test.py`.
+Ensure the integrity and reliability of CAP-AnnData on your system by running the unit tests via `pytest` from the root of the repo.
+
+```commandline
+pip install pytest
+pytest test
+```
 
 Make sure Python 3.9 or newer is used, along with all requirements specified in requirements.txt
 
 ## How-TO:
 
-#### 1. Read AnnData File Dataframes
+#### 1. Access AnnData File DataFrames
 
 ##### Basic Reading
 By default, `CapAnnData` does not automatically read any data. To begin working with dataframes, you need to explicitly read the data from the AnnData file. You can read the entire dataframe or select specific columns. For partial reading, provide a list of column names.
 
 ```python
-from cap_anndata import CapAnnData, read_h5ad
+from cap_anndata import read_h5ad
 
 file_path = "your_data.h5ad"
 with read_h5ad(file_path=file_path, edit=False) as cap_adata:
+    # Get the list of all obs columns in AnnData file
+    cap_adata.obs_keys()  # ['a', 'b', 'c']
     # Read all columns of 'obs'
     cap_adata.read_obs()
+    # Get the list of columns of DataFrame in memory
+    cap_adata.obs.columns  # ['a', 'b', 'c']
 
+    # Get the list of all var columns in AnnData file
+    cap_adata.var_keys()  # ['d', 'e', 'f']
     # Read specific columns of 'var'
-    cap_adata.read_var(columns=['gene_expression', 'dispersion'])
+    cap_adata.read_var(columns=['d'])
+    cap_adata.var.columns  # ['d']
+    # Read additional column
+    cap_adata.read_var(columns=['e'])
+    cap_adata.var.columns  # ['d', 'e']
 
-    # Read all columns of raw.var
-    cap_adata.read_var(raw=True)
+    # Read column and reset the in-memory DataFrame before that
+    cap_adata.read_var(columns=['f'], reset=True)
+    cap_adata.var.columns  # ['f']
+
+    # Read no columns of raw.var (only the index)
+    cap_adata.raw.read_var(columns=[])
+```
+
+##### Control DataFrame columns list
+
+```python
+# cap_adata: CapAnnData
+
+
 ```
 
 ##### Non-existing columns
 
-If a column doesn't exist in the file, no error will be raised but the column will be missing in the resulting Dataframe. So, the list of columns saying more like "try to read this columns from the file". It is needed because we there is no way yet to check if the column exists before the read. 
+If a column doesn't exist in the file, no error will be raised but the column will be missing in the resulting DataFrame. So, the list of columns saying more like "try to read this columns from the file". It is needed because we there is no way yet to check if the column exists before the read. 
 
-#### 2. Modify the AnnData File Dataframes In-Place
+#### 2. Modify the AnnData File DataFrames In-Place
 
 You can directly modify the dataframe by adding, renaming, or removing columns.
 
@@ -78,6 +112,10 @@ cap_adata.obs.drop(columns='sample', inplace=True)
 
 # Overwrite changes
 cap_adata.overwrite(['obs'])
+
+# NOTE that the line 
+# cap_adata.read_obs(columns=['sample'], reset=True)
+# Will override in-memory changes with values from the AnnData file
 ```
 
 #### 4. How to work with X and raw.X
