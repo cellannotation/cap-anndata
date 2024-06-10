@@ -24,7 +24,7 @@ Make sure Python 3.9 or newer is used, along with all requirements specified in 
 
 ## How-TO:
 
-#### 1. Access AnnData File Dataframes
+#### 1. Access AnnData File DataFrames
 
 ##### Basic Reading
 By default, `CapAnnData` does not automatically read any data. To begin working with dataframes, you need to explicitly read the data from the AnnData file. You can read the entire dataframe or select specific columns. For partial reading, provide a list of column names.
@@ -49,9 +49,9 @@ with read_h5ad(file_path=file_path, edit=False) as cap_adata:
     # Read additional column
     cap_adata.read_var(columns=['e'])
     cap_adata.var.columns  # ['d', 'e']
-    
-    # Read column and flush the previous data from memory
-    cap_adata.read_var(columns=['f'], flush=True)
+
+    # Read column and reset the in-memory DataFrame before that
+    cap_adata.read_var(columns=['f'], reset=True)
     cap_adata.var.columns  # ['f']
 
     # Read no columns of raw.var (only the index)
@@ -68,9 +68,9 @@ with read_h5ad(file_path=file_path, edit=False) as cap_adata:
 
 ##### Non-existing columns
 
-If a column doesn't exist in the file, no error will be raised but the column will be missing in the resulting Dataframe. So, the list of columns saying more like "try to read this columns from the file". It is needed because we there is no way yet to check if the column exists before the read. 
+If a column doesn't exist in the file, no error will be raised but the column will be missing in the resulting DataFrame. So, the list of columns saying more like "try to read this columns from the file". It is needed because we there is no way yet to check if the column exists before the read. 
 
-#### 2. Modify the AnnData File Dataframes In-Place
+#### 2. Modify the AnnData File DataFrames In-Place
 
 You can directly modify the dataframe by adding, renaming, or removing columns.
 
@@ -114,7 +114,7 @@ cap_adata.obs.drop(columns='sample', inplace=True)
 cap_adata.overwrite(['obs'])
 
 # NOTE that the line 
-# cap_adata.read_obs(columns=['sample'], flush=True)
+# cap_adata.read_obs(columns=['sample'], reset=True)
 # Will override in-memory changes with values from the AnnData file
 ```
 

@@ -322,7 +322,7 @@ def test_obs_var_keys():
     os.remove(file_path)
 
 
-def test_flush_read():
+def test_reset_read():
     adata = get_filled_anndata()
     temp_folder = tempfile.mkdtemp()
     file_path = os.path.join(temp_folder, "test_flush_read.h5ad")
@@ -339,9 +339,10 @@ def test_flush_read():
         cap_adata.read_obs(columns=["cell_type"])
         pd.testing.assert_series_equal(cap_adata.obs.cell_type, adata.obs.cell_type)
 
-        cap_adata.read_obs(columns=["number"], flush=True)
+        cap_adata.read_obs(columns=["number"], reset=True)
         assert cap_adata.obs.columns.size == 1
     os.remove(file_path)
+
 
 def test_obs_last_column_removal():
     col_name = 'cell_type'

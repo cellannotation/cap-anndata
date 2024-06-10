@@ -106,9 +106,9 @@ class RawLayer(BaseLayerMatrixAndDf):
             self._var = self._lazy_df_load("var")
         return self._var
 
-    def read_var(self, columns: List[str] = None, flush: bool = False) -> None:
+    def read_var(self, columns: List[str] = None, reset: bool = False) -> None:
         df = self._read_df(key="var", columns=columns)
-        if self.var.empty or flush:
+        if self.var.empty or reset:
             self._var = df
         else:
             for col in df.columns:
@@ -163,17 +163,17 @@ class CapAnnData(BaseLayerMatrixAndDf):
             )
         return self._uns
 
-    def read_obs(self, columns: List[str] = None, flush: bool = False) -> None:
+    def read_obs(self, columns: List[str] = None, reset: bool = False) -> None:
         df = self._read_df("obs", columns=columns)
-        if self.obs.empty or flush:
+        if self.obs.empty or reset:
             self._obs = df
         else:
             for col in df.columns:
                 self._obs[col] = df[col]
 
-    def read_var(self, columns: List[str] = None, flush: bool = False) -> None:
+    def read_var(self, columns: List[str] = None, reset: bool = False) -> None:
         df = self._read_df("var", columns=columns)
-        if self.var.empty or flush:
+        if self.var.empty or reset:
             self._var = df
         else:
             for col in df.columns:
