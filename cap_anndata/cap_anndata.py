@@ -96,7 +96,7 @@ class BaseLayerMatrixAndDf:
 
     def _validate_cap_df(self, cap_df: CapAnnDataDF, axis: int) -> None:
         if not isinstance(cap_df, CapAnnDataDF):
-            raise ValueError(
+            raise TypeError(
                 f"The input should be an instance of CapAnnDataDF class but {type(cap_df)} given!"
             )
 

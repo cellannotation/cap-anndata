@@ -26,7 +26,9 @@ def get_filled_anndata(n_rows: int = 10, n_genes: int = 10, sparse=False) -> ad.
     return adata
 
 
-def save_filled_anndata(file_name: str, n_rows: int = 10, n_genes: int = 10, sparse=False) -> str:
+def save_filled_anndata(
+    file_name: str, n_rows: int = 10, n_genes: int = 10, sparse=False
+) -> str:
     adata = get_filled_anndata(n_rows, n_genes, sparse)
     temp_folder = tempfile.mkdtemp()
     file_path = os.path.join(temp_folder, file_name)
@@ -353,8 +355,8 @@ def test_reset_read():
 
 
 def test_obs_last_column_removal():
-    col_name = 'cell_type'
-    adata = ad.AnnData(X=np.ones(shape=(10,10), dtype=np.float32))
+    col_name = "cell_type"
+    adata = ad.AnnData(X=np.ones(shape=(10, 10), dtype=np.float32))
     adata.obs[col_name] = col_name
 
     temp_folder = tempfile.mkdtemp()
@@ -365,7 +367,7 @@ def test_obs_last_column_removal():
     with read_h5ad(file_path, edit=True) as cap_adata:
         cap_adata.read_obs()
         cap_adata.obs.remove_column(col_name=col_name)
-        cap_adata.overwrite(['obs'])
+        cap_adata.overwrite(["obs"])
 
     # Check no any issues on read with updated file
     with read_h5ad(file_path) as cap_adata:
@@ -377,18 +379,53 @@ def test_obs_last_column_removal():
     os.remove(file_path)
 
 
-def test_obs_setter():
-    adata = get_filled_anndata()
+@pytest.mark.parametrize("field", ["obs", "var", "raw.var"])
+def test_df_setter(field):
+    def set_field(field, new_df, cap_adata):
+        if field == "obs":
+            cap_adata.obs = new_df
+        elif field == "var":
+            cap_adata.var = new_df
+        else:
+            cap_adata.raw.var = new_df
+
+    n_rows, n_genes = 10, 5
+    adata = get_filled_anndata(n_rows=n_rows, n_genes=n_genes)
     temp_folder = tempfile.mkdtemp()
     file_path = os.path.join(temp_folder, "test_obs_setter.h5ad")
     adata.write(filename=file_path)
 
+    new_df = pd.DataFrame(
+        index=range(n_rows if field == "obs" else n_genes), columns=["new_column"]
+    )
+
     with read_h5ad(file_path, edit=True) as cap_adata:
         cap_adata.read_obs()
-        assert isinstance(cap_adata.obs, CapAnnDataDF)
-        new_obs = cap_adata.obs.copy()
-        new_obs["new_column"] = "new_value"
+        cap_adata.read_var()
+        cap_adata.raw.read_var()
 
-        cap_adata.obs = new_obs
+        # test bad format
+        try:
+            set_field(field, new_df, cap_adata)
+        except TypeError:
+            pass
+        except Exception as e:
+            assert False, f"Unexpected exception: {e}"
+        else:
+            assert False, "Expected TypeError"
 
+        # test good format
+        new_df = CapAnnDataDF.from_df(new_df)
+        set_field(field, new_df, cap_adata)
 
+        # test bad shape
+        new_df = CapAnnDataDF.from_df(new_df[: new_df.shape[0] // 2])
+
+        try:
+            set_field(field, new_df, cap_adata)
+        except ValueError:
+            pass
+        except Exception as e:
+            assert False, f"Unexpected exception: {e}"
+        else:
+            assert False, "Expected ValueError"
