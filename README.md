@@ -79,10 +79,10 @@ You can directly modify the dataframe by adding, renaming, or removing columns.
 cap_adata.obs['new_col'] = [value1, value2, value3]
 
 # Rename a column
-cap_adata.rename_column('old_col_name', 'new_col_name')
+cap_adata.obs.rename_column('old_col_name', 'new_col_name')
 
 # Remove a column
-cap_adata.remove_column('col_to_remove')
+cap_adata.obs.remove_column('col_to_remove')
 ```
 
 After modifications, you can overwrite the changes back to the AnnData file. If a value doesn't exist, it will be created.
@@ -206,4 +206,29 @@ To save `uns` changes the method `CapAnnData.overwrite()` must be called.
 ```python
 cap_adata.overwrite()  # all in-memory fields will be overwritten
 cap_adata.overwrite(["uns"])  # overwrite the uns secion only
+```
+
+#### 7. Join and Merge DataFrames
+
+CAP-AnnData provides enhanced methods for joining and merging dataframes, preserving column order and data integrity
+
+```python
+from cap_anndata import CapAnnDataDF
+import pandas as pd
+
+data1 = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+data2 = pd.DataFrame({'D': [7, 8, 9], 'E': [10, 11, 12]})
+cap_anndata_df1 = CapAnnDataDF.from_df(data1, column_order=['A', 'B', 'C'])
+
+cap_df = cap_anndata_df1.join(data2, how='left')
+
+cap_df.columns  # ['A', 'B', 'D', 'E']
+cap_df.column_order  # ['A', 'B', 'C', 'D', 'E']
+
+data3 = pd.DataFrame({'A': [2, 3, 4], 'D': [10, 11, 12]})
+cap_df = cap_anndata_df1.merge(data3, on='A')
+
+cap_df.columns  # ['A', 'B', 'D']
+cap_df.column_order  # ['A', 'B', 'C', 'D']
+cap_df.shape  # (2, 3)
 ```
