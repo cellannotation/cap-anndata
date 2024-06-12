@@ -58,17 +58,10 @@ with read_h5ad(file_path=file_path, edit=False) as cap_adata:
     cap_adata.raw.read_var(columns=[])
 ```
 
-##### Control DataFrame columns list
+##### Difference between `obs_keys()` and `obs.columns`
+`obs_keys()` returns the list of columns in the on-disc AnnData file, while `obs.columns` returns the list of columns in the in-memory DataFrame. The two lists may differ if you read only specific columns. If you modify the in-memory DataFrame, the `obs_keys()` will reflect the changes. BTW it is recommended to check the `obs_keys()` before the `overwrite()` call to avoid the AnnData file damage.
 
-```python
-# cap_adata: CapAnnData
-
-
-```
-
-##### Non-existing columns
-
-If a column doesn't exist in the file, no error will be raised but the column will be missing in the resulting DataFrame. So, the list of columns saying more like "try to read this columns from the file". It is needed because we there is no way yet to check if the column exists before the read. 
+If a column doesn't exist in the file, no error will be raised but the column will be missing in the resulting DataFrame. So, the list of columns saying more like "try to read this columns from the file". It is needed because we there is no way yet to check if the column exists before the read. Exactly the same behavior is for the `var_keys()` and `var.columns`. 
 
 #### 2. Modify the AnnData File DataFrames In-Place
 
@@ -86,7 +79,7 @@ cap_adata.obs.remove_column('col_to_remove')
 ```
 
 After modifications, you can overwrite the changes back to the AnnData file. If a value doesn't exist, it will be created.
-Note: `read_h5ad` must be called with `edit=True` argument.
+Note: `read_h5ad` must be called with `edit=True` argument to open `.h5ad` file in `r+` mode.
 
 ```python
 # overwrite all values which were read
@@ -96,7 +89,7 @@ cap_adata.overwrite()
 cap_adata.overwrite(['obs', 'var'])
 ```
 
-The full list of supported fields: `X`, `raw.X`, `obs`, `var`, `raw.var`, `obsm`, `uns`.
+The full list of supported fields: `obs`, `var`, `raw.var`, `obsm`, `uns`.
 
 #### 3. How to Read Few Columns but Overwrite One in a Dataframe
 
@@ -120,7 +113,8 @@ cap_adata.overwrite(['obs'])
 
 #### 4. How to work with X and raw.X
 
-The CapAnnData package won't read any field by default. However, the `X` and `raw.X` will be linked to the backed matrices automatically upon the first request to those fields.
+The CapAnnData package won't read any field by default. However, the `X` and `raw.X` will be linked to the backed matrices automatically upon the first request to those fields. 
+The X object will be returned as the `h5py.Dataset` or `AnnData.experimental.sparse_dataset`.
 
 ```python
 with read_h5ad(file_path=file_path, edit=False) as cap_adata:
@@ -151,7 +145,10 @@ s_ = np.s_[mask, :5]
 
 #### 5. How to handle obsm embeddings matrixes
 
-By the default the CapAnnData will not read the embeddings matrix. The link to the h5py objects will be created upon the first call of the `.obsm` property. Alike the AnnData package the call like `cap_adata.obsm["X_tsne"]` will not return the in-memory matrix but will return the backed version instead. We can get the information about the name and shape of the embeddings without taking the whole matrixes in the memory!
+By the default the CapAnnData will not read the embeddings matrix. 
+The link to the h5py objects will be created upon the first call of the `.obsm` property. 
+Alike the AnnData package the call like `cap_adata.obsm["X_tsne"]` will not return the in-memory matrix but will return the backed version instead. 
+It is possible to get the information about the name and shape of the embeddings without taking the whole matrix in the memory.
 
 ```python
 with read_h5ad(file_path=file_path, edit=False) as cap_adata:
@@ -210,7 +207,7 @@ cap_adata.overwrite(["uns"])  # overwrite the uns secion only
 
 #### 7. Join and Merge DataFrames
 
-CAP-AnnData provides enhanced methods for joining and merging dataframes, preserving column order and data integrity
+Cap-AnnData provides enhanced methods for joining and merging dataframes, preserving column order and data integrity
 
 ```python
 from cap_anndata import CapAnnDataDF
