@@ -43,10 +43,8 @@ class CapAnnDataDF(pd.DataFrame):
         new_inst.column_order = column_order
         return new_inst
 
-    def join(self, other: Any, on=None, how="left", lsuffix="", rsuffix="", sort=False):
-        result = super().join(
-            other, on=on, how=how, lsuffix=lsuffix, rsuffix=rsuffix, sort=sort
-        )
+    def join(self, other: Any, **kwargs) -> Self:
+        result = super().join(other=other, **kwargs)
         if isinstance(other, CapAnnDataDF):
             new_columns = [
                 col for col in other.column_order if col not in self.column_order
@@ -56,35 +54,8 @@ class CapAnnDataDF(pd.DataFrame):
         column_order = np.append(self.column_order, new_columns)
         return self.from_df(result, column_order=column_order)
 
-    def merge(
-        self,
-        right,
-        how="inner",
-        on=None,
-        left_on=None,
-        right_on=None,
-        left_index=False,
-        right_index=False,
-        sort=False,
-        suffixes=("_x", "_y"),
-        copy=True,
-        indicator=False,
-        validate=None,
-    ):
-        result = super().merge(
-            right,
-            how=how,
-            on=on,
-            left_on=left_on,
-            right_on=right_on,
-            left_index=left_index,
-            right_index=right_index,
-            sort=sort,
-            suffixes=suffixes,
-            copy=copy,
-            indicator=indicator,
-            validate=validate,
-        )
+    def merge(self, right, **kwargs) -> Self:
+        result = super().merge(right=right, **kwargs)
         if isinstance(right, CapAnnDataDF):
             new_columns = [
                 col for col in right.column_order if col not in self.column_order
