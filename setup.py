@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='cap_anndata',
-    version='0.2.0',
+    version='0.2.1',
     author='R. Mukhin, A. Isaev',
     author_email='roman@ebookapplications.com',
     packages=find_packages(exclude=["test"]),
@@ -23,6 +23,10 @@ setup(
         "numpy>=1.26.3",
         "pandas>=2.2.0",
         "anndata>=0.10.5",
+        "h5py>=3.5.0",
     ],
-    extras_require={"dev": ["pytest>=8.0.0"]}
+    extras_require={"dev": [
+        "pytest>=8.0.0",
+        "setuptools~=69.1.1"
+    ]}
 )

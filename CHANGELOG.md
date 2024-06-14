@@ -2,7 +2,12 @@
 
 ## [Unreleased]
 
--
+- 
+
+## [v0.2.1] - 2024-06-14
+
+### Fixed
+- **Python 3.9 Compality**: Fixed type notation in `CapAnnDataDF`.
 
 ## [v0.2.0] - 2024-06-12
 
