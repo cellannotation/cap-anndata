@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import List, Any
+from typing import List, Any, Union
 import logging
 
 from pandas._typing import Self
@@ -65,5 +65,5 @@ class CapAnnDataDF(pd.DataFrame):
         column_order = np.append(self.column_order, new_columns)
         return self.from_df(result, column_order=column_order)
 
-    def copy(self, deep: bool_t | None = True) -> Self:
+    def copy(self, deep: Union[bool_t, None] = True) -> Self:
         return self.from_df(super().copy(deep=deep), column_order=self.column_order)
