@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 - 
+## [v0.2.2] - 2024-08-28
+
+### Added
+- compression option in `overwrite` method to allow using different compression algorithms. Note: `lzf` is still default. 
+
+### Changed
+
+- `requirements.txt` updated to freeze package versions. Possible incompatibility with `numpy` v2+ was displayed. 
 
 ## [v0.2.1] - 2024-06-14
 
