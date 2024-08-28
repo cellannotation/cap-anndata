@@ -91,8 +91,8 @@ class BaseLayerMatrixAndDf:
             df.column_order = df.column_order.astype(object)
         return df
 
-    def _write_elem_lzf(self, dest_key: str, elem: any) -> None:
-        write_elem(self._file, dest_key, elem, dataset_kwargs={"compression": "lzf"})
+    def _write_elem(self, dest_key: str, elem: any, compression: str) -> None:
+        write_elem(self._file, dest_key, elem, dataset_kwargs={"compression": compression})
 
     def _validate_cap_df(self, cap_df: CapAnnDataDF, axis: int) -> None:
         if not isinstance(cap_df, CapAnnDataDF):
@@ -210,7 +210,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for col in df.columns:
                 self._var[col] = df[col]
 
-    def overwrite(self, fields: List[str] = None) -> None:
+    def overwrite(self, fields: List[str] = None, compression: str = "lzf") -> None:
         field_to_entity = {
             "obs": self.obs,
             "var": self.var,
@@ -237,7 +237,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 key = key.replace(".", "/") if key == "raw.var" else key
 
                 for col in entity.columns:
-                    self._write_elem_lzf(f"{key}/{col}", entity[col].values)
+                    self._write_elem(f"{key}/{col}", entity[col].values, compression=compression)
 
                 column_order = entity.column_order
                 if (
@@ -250,7 +250,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.uns.keys():
                 if self.uns[key] is not NotLinkedObject:
                     dest = f"uns/{key}"
-                    self._write_elem_lzf(dest, self.uns[key])
+                    self._write_elem(dest, self.uns[key], compression=compression)
             for key in self.uns.keys_to_remove:
                 del self._file[f"uns/{key}"]
 
@@ -261,8 +261,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
         for key in keys:
             existing_keys = self.uns.keys()
             if key in existing_keys:
-                sourse = self._file[f"uns/{key}"]
-                self.uns[key] = read_elem(sourse)
+                source = self._file[f"uns/{key}"]
+                self.uns[key] = read_elem(source)
 
     def _link_obsm(self) -> None:
         self._obsm = {}
