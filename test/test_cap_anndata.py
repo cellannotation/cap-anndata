@@ -102,7 +102,8 @@ def test_partial_read():
     pd.testing.assert_index_equal(adata.raw.var.index, cap_adata.raw.var.index)
 
 
-def test_overwrite_df():
+@pytest.mark.parametrize("compression", ["gzip", "lzf"])
+def test_overwrite_df(compression):
     adata = get_filled_anndata()
     temp_folder = tempfile.mkdtemp()
     file_path = os.path.join(temp_folder, "test_overwrite_df.h5ad")
@@ -132,7 +133,7 @@ def test_overwrite_df():
         cap_adata.raw.var["extra_info"] = np.random.rand(cap_adata.shape[1])
         ref_raw_var = cap_adata.raw.var.copy()
 
-        cap_adata.overwrite(["obs", "var", "raw.var"])
+        cap_adata.overwrite(["obs", "var", "raw.var"], compression=compression)
 
     adata = ad.read_h5ad(file_path)
     os.remove(file_path)
@@ -253,7 +254,8 @@ def test_read_uns():
     os.remove(file_path)
 
 
-def test_modify_uns():
+@pytest.mark.parametrize("compression", ["gzip", "lzf"])
+def test_modify_uns(compression):
     adata = get_base_anndata()
     adata.uns = {
         "field_to_ignore": list(range(100)),
@@ -278,7 +280,7 @@ def test_modify_uns():
         cap_adata.uns["field_to_expand"]["key1"] = d_to_exp
         cap_adata.uns["field_to_modify"] = v_to_mod
 
-        cap_adata.overwrite(["uns"])
+        cap_adata.overwrite(["uns"], compression=compression)
 
     adata = ad.read_h5ad(file_path)
 
