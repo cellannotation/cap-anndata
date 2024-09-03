@@ -448,13 +448,14 @@ def test_layers():
     sparse_array = csr_matrix(np.random.random((10,10)))
 
     with read_h5ad(file_path, edit=True) as cap_adata:
-        cap_adata.set_layer(dense_array, layer_name_dense)
-        cap_adata.set_layer(sparse_array, layer_name_sparse)
-
-        cap_adata.overwrite(["layers"])
+        cap_adata.read_layers([])
+        cap_adata.layers[layer_name_dense] = dense_array
+        cap_adata.layers[layer_name_sparse] = sparse_array
+        cap_adata.overwrite(fields=["layers"])
 
     with read_h5ad(file_path) as cap_adata:
-        assert np.array_equal(dense_array, cap_adata.get_layer(layer_name_dense)), "Must be dense matrix!"
-        assert np.array_equal(sparse_array.todense(), cap_adata.get_layer(layer_name_sparse).todense()), "Must be sparse matrix!"
+        cap_adata.read_layers([layer_name_dense, layer_name_sparse])
+        assert np.array_equal(dense_array, cap_adata.layers[layer_name_dense]), "Must be dense matrix!"
+        assert np.array_equal(sparse_array.todense(), cap_adata.layers[layer_name_sparse].todense()), "Must be sparse matrix!"
 
     os.remove(file_path)

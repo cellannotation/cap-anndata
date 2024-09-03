@@ -143,7 +143,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
         self._obs: CapAnnDataDF = None
         self._var: CapAnnDataDF = None
         self._X: X_NOTATION = None
-        self._layers = {}, # TODO: make 'Mapping[str, np.ndarray | sparse.spmatrix] | None = None' --> cls CapAnnDataLayers
+        self._layers: CapAnnDataUns = None # TODO: CapAnnDataLayers
         self._obsm: OBSM_NOTATION = None
         self._uns: CapAnnDataUns = None
         self._raw: RawLayer = None
@@ -195,6 +195,14 @@ class CapAnnData(BaseLayerMatrixAndDf):
             )
         return self._uns
 
+    @property
+    def layers(self) -> CapAnnDataUns: # TODO: CapAnnDataLayers
+        if self._layers is None:
+            self._layers = CapAnnDataUns(
+                {k: NotLinkedObject for k in self._file["layers"].keys()}
+            )
+        return self._layers
+
     def read_obs(self, columns: List[str] = None, reset: bool = False) -> None:
         df = self._read_df("obs", columns=columns)
         if self.obs.empty or reset:
@@ -217,7 +225,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             "var": self.var,
             "raw.var": self.raw.var if self.raw is not None else None,
             "uns": self.uns,
-            "layers": self._layers, # TODO: self.layers
+            "layers": self.layers,
         }
 
         if fields is None:
@@ -256,11 +264,14 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.uns.keys_to_remove:
                 del self._file[f"uns/{key}"]
 
-        if "layers" in fields: # TODO: layers, override only selected key-values
-            for k, v in self._layers[0].items(): # TODO: self.layers
-                dest = f"layers/{k}"
-                self._write_elem(dest, v, compression=compression)
-            # TODO: remove necessary layers
+        if "layers" in fields:
+            # raise Exception(f"!!!!layers={self.layers.keys()}, self.layers.keys_to_remove={self.layers.keys_to_remove}")
+            for key in self.layers.keys():
+                if self.layers[key] is not NotLinkedObject:
+                    dest = f"layers/{key}"
+                    self._write_elem(dest, self.layers[key], compression=compression)
+            for key in self.layers.keys_to_remove:
+                del self._file[f"layers/{key}"]
 
     def read_uns(self, keys: List[str] = None) -> None:
         if keys is None:
@@ -272,19 +283,15 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 source = self._file[f"uns/{key}"]
                 self.uns[key] = read_elem(source)
 
-    # TODO: property 
-    def get_layer(self, name):
-        layer = None
-        if name in self._layers[0]:
-            layer = self._layers[0][name]
-        elif "layers" in self._file.keys() and name in self._file["layers"]:
-            source = self._file[f"layers/{name}"]
-            layer = read_elem(source)
-            self._layers[0][name] = layer
-        return layer
+    def read_layers(self, keys: List[str] = None) -> None:
+        if keys is None:
+            keys = list(self.layers.keys())
 
-    def set_layer(self, data, name):
-        self._layers[0][name] = data
+        for key in keys:
+            existing_keys = self.layers.keys()
+            if key in existing_keys:
+                source = self._file[f"layers/{key}"]
+                self.layers[key] = read_elem(source)
 
     def _link_obsm(self) -> None:
         self._obsm = {}
