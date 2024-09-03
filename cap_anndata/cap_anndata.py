@@ -143,6 +143,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
         self._obs: CapAnnDataDF = None
         self._var: CapAnnDataDF = None
         self._X: X_NOTATION = None
+        self._layers = {}, # TODO: make 'Mapping[str, np.ndarray | sparse.spmatrix] | None = None' --> cls CapAnnDataLayers
         self._obsm: OBSM_NOTATION = None
         self._uns: CapAnnDataUns = None
         self._raw: RawLayer = None
@@ -216,6 +217,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             "var": self.var,
             "raw.var": self.raw.var if self.raw is not None else None,
             "uns": self.uns,
+            "layers": self._layers, # TODO: self.layers
         }
 
         if fields is None:
@@ -254,6 +256,12 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.uns.keys_to_remove:
                 del self._file[f"uns/{key}"]
 
+        if "layers" in fields: # TODO: layers, override only selected key-values
+            for k, v in self._layers[0].items(): # TODO: self.layers
+                dest = f"layers/{k}"
+                self._write_elem(dest, v, compression=compression)
+            # TODO: remove necessary layers
+
     def read_uns(self, keys: List[str] = None) -> None:
         if keys is None:
             keys = list(self.uns.keys())
@@ -263,6 +271,20 @@ class CapAnnData(BaseLayerMatrixAndDf):
             if key in existing_keys:
                 source = self._file[f"uns/{key}"]
                 self.uns[key] = read_elem(source)
+
+    # TODO: property 
+    def get_layer(self, name):
+        layer = None
+        if name in self._layers[0]:
+            layer = self._layers[0][name]
+        elif "layers" in self._file.keys() and name in self._file["layers"]:
+            source = self._file[f"layers/{name}"]
+            layer = read_elem(source)
+            self._layers[0][name] = layer
+        return layer
+
+    def set_layer(self, data, name):
+        self._layers[0][name] = data
 
     def _link_obsm(self) -> None:
         self._obsm = {}

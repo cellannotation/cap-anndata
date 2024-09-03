@@ -1,4 +1,5 @@
 import anndata as ad
+from scipy.sparse import csr_matrix
 import numpy as np
 import tempfile
 import os
@@ -431,3 +432,29 @@ def test_df_setter(field):
             assert False, f"Unexpected exception: {e}"
         else:
             assert False, "Expected ValueError"
+
+
+def test_layers():
+    adata = get_filled_anndata()
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_layers.h5ad")
+
+    adata.write_h5ad(file_path)
+
+    layer_name_dense = "layer_dense"
+    layer_name_sparse = "layer_sparse"
+
+    dense_array = np.random.random((10,10))
+    sparse_array = csr_matrix(np.random.random((10,10)))
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.set_layer(dense_array, layer_name_dense)
+        cap_adata.set_layer(sparse_array, layer_name_sparse)
+
+        cap_adata.overwrite(["layers"])
+
+    with read_h5ad(file_path) as cap_adata:
+        assert np.array_equal(dense_array, cap_adata.get_layer(layer_name_dense)), "Must be dense matrix!"
+        assert np.array_equal(sparse_array.todense(), cap_adata.get_layer(layer_name_sparse).todense()), "Must be sparse matrix!"
+
+    os.remove(file_path)
