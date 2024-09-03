@@ -265,7 +265,6 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 del self._file[f"uns/{key}"]
 
         if "layers" in fields:
-            # raise Exception(f"!!!!layers={self.layers.keys()}, self.layers.keys_to_remove={self.layers.keys_to_remove}")
             for key in self.layers.keys():
                 if self.layers[key] is not NotLinkedObject:
                     dest = f"layers/{key}"
