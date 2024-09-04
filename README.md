@@ -1,7 +1,7 @@
 # CAP-AnnData: Enhanced Partial I/O for AnnData Files
 
 ## Overview
-CAP-AnnData enriches the AnnData ecosystem by offering tailored functionalities for partial reading and writing of AnnData files. This enhancement allows for selective manipulation of sections such as `obs`, `var`, `X`, `raw.X`, `obsm`, and `uns` without the need for loading entire datasets into memory. Leveraging AnnData's native methods, CAP-AnnData aims to maintain backward compatibility while improving efficiency, especially useful for large-scale single-cell genomics data.
+CAP-AnnData enriches the AnnData ecosystem by offering tailored functionalities for partial reading and writing of AnnData files. This enhancement allows for selective manipulation of sections such as `obs`, `var`, `X`, `raw.X`, `obsm`, `layers` and `uns` without the need for loading entire datasets into memory. Leveraging AnnData's native methods, CAP-AnnData aims to maintain backward compatibility while improving efficiency, especially useful for large-scale single-cell genomics data.
 
 ## Getting Started
 
@@ -89,7 +89,7 @@ cap_adata.overwrite()
 cap_adata.overwrite(['obs', 'var'])
 ```
 
-The full list of supported fields: `obs`, `var`, `raw.var`, `obsm`, `uns`.
+The full list of supported fields: `obs`, `var`, `raw.var`, `obsm`, `layers` and `uns`.
 
 #### 3. How to Read Few Columns but Overwrite One in a Dataframe
 
@@ -111,7 +111,7 @@ cap_adata.overwrite(['obs'])
 # Will override in-memory changes with values from the AnnData file
 ```
 
-#### 4. How to work with X and raw.X
+#### 4. How to Work with **X** and **raw.X**
 
 The CapAnnData package won't read any field by default. However, the `X` and `raw.X` will be linked to the backed matrices automatically upon the first request to those fields. 
 The X object will be returned as the `h5py.Dataset` or `AnnData.experimental.sparse_dataset`.
@@ -143,7 +143,7 @@ mask = np.array([i < 5 for i in range(adata.shape[0])])
 s_ = np.s_[mask, :5]
 ```
 
-#### 5. How to handle obsm embeddings matrixes
+#### 5. How to Handle **obsm** Embeddings Matrixes
 
 By the default the CapAnnData will not read the embeddings matrix. 
 The link to the h5py objects will be created upon the first call of the `.obsm` property. 
@@ -163,7 +163,7 @@ with read_h5ad(file_path=file_path, edit=False) as cap_adata:
     matrix = cap_adata.obsm[embeddings][:]
 ```
 
-#### 6. How to read and modify uns section
+#### 6. How to Read and Modify **uns** Section
 
 The `CapAnnData` class will lazely link the uns section upon the first call but ***WILL NOT*** read it into memory. Instead, the dictionary of the pairs `{'key': "__NotLinkedObject"}` will be creted. It allow to get the list of keys before the actual read. To read the uns section in the memory the `.read_uns(keys)` method must be called.
 
@@ -205,7 +205,35 @@ cap_adata.overwrite()  # all in-memory fields will be overwritten
 cap_adata.overwrite(["uns"])  # overwrite the uns secion only
 ```
 
-#### 7. Join and Merge DataFrames
+
+#### 7. Work with **layers**
+
+By the default the CapAnnData will not read the layers. 
+Links to available layers will be created upon the first call of the `.layers` property. 
+Alike the AnnData package the call like `cap_adata.layers["my_layer"]` will not return the in-memory matrix but will return the backed version instead. 
+
+```python
+with read_h5ad(file_path=file_path, edit=True) as cap_adata:
+    # will return the list of strings
+    layer_names = cap_adata.layer_keys()  
+
+    # return the matrix in backed mode
+    my_layer = cap_adata.layers["my_layer1"]
+
+    # take the whole matrix in memory
+    my_layer = my_layer[:]
+
+    # add new layer
+    cap_adata.layers["my_layer2"] = my_layer # could be numpy dense array or csr sparse matrix
+
+    # remove old layer
+    cap_adata.layers.pop("my_layer1")
+
+    # save changes
+    cap_adata.overwrite(["layers"])
+```
+
+#### 8. Join and Merge DataFrames
 
 Cap-AnnData provides enhanced methods for joining and merging dataframes, preserving column order and data integrity
 
