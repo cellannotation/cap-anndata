@@ -179,7 +179,7 @@ with read_h5ad(file_path=file_path, edit=True) as cap_adata:
     cap_adata.read_uns()
 ```
 
-Since the `.uns` section is in the memory (partially or completely) we can work with it as with the regular `dict()` python object. The main feature of the `CapAnnDataUns` class which inherited from `dict` is the tracking of the keys which must be removed from the `.h5ad` file upon overwrite. 
+Since the `.uns` section is in the memory (partially or completely) we can work with it as with the regular `dict()` python object. The main feature of the `CapAnnDataDict` class which inherited from `dict` is the tracking of the keys which must be removed from the `.h5ad` file upon overwrite. 
 
 ```python
 # get the value

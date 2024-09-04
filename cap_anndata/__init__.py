@@ -1,5 +1,5 @@
 from .backed_df import CapAnnDataDF
-from .backed_uns import CapAnnDataUns
+from .backed_dict import CapAnnDataDict
 from .cap_anndata import CapAnnData
 from .reader import (
     read_directly,

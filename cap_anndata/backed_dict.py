@@ -1,7 +1,7 @@
 from typing import Set, Any
 
 
-class CapAnnDataUns(dict):
+class CapAnnDataDict(dict):
     __keys_to_remove: Set[str] = None
 
     def __delitem__(self, __key: Any) -> None:

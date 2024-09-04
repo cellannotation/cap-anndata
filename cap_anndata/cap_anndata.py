@@ -5,7 +5,7 @@ import h5py
 from typing import List, Union, Dict, Tuple, Final
 from anndata._io.specs import read_elem, write_elem
 
-from cap_anndata import CapAnnDataDF, CapAnnDataUns
+from cap_anndata import CapAnnDataDF, CapAnnDataDict
 
 
 logger = logging.getLogger(__name__)
@@ -143,9 +143,9 @@ class CapAnnData(BaseLayerMatrixAndDf):
         self._obs: CapAnnDataDF = None
         self._var: CapAnnDataDF = None
         self._X: X_NOTATION = None
-        self._layers: CapAnnDataUns = None # TODO: CapAnnDataLayers
         self._obsm: OBSM_NOTATION = None
-        self._uns: CapAnnDataUns = None
+        self._layers: CapAnnDataDict = None
+        self._uns: CapAnnDataDict = None
         self._raw: RawLayer = None
         self._shape: Tuple[int, int] = None
 
@@ -172,12 +172,6 @@ class CapAnnData(BaseLayerMatrixAndDf):
         self._var = cap_df
 
     @property
-    def obsm(self) -> OBSM_NOTATION:
-        if self._obsm is None:
-            self._link_obsm()
-        return self._obsm
-
-    @property
     def raw(self) -> RawLayer:
         if self._raw is None:
             if "raw" not in self._file.keys():
@@ -188,18 +182,24 @@ class CapAnnData(BaseLayerMatrixAndDf):
         return self._raw
 
     @property
-    def uns(self) -> CapAnnDataUns:
+    def uns(self) -> CapAnnDataDict:
         if self._uns is None:
-            self._uns = CapAnnDataUns(
+            self._uns = CapAnnDataDict(
                 {k: NotLinkedObject for k in self._file["uns"].keys()}
             )
         return self._uns
 
     @property
-    def layers(self) -> CapAnnDataUns: # TODO: CapAnnDataLayers
+    def layers(self) -> CapAnnDataDict:
         if self._layers is None:
             self._link_layers()
         return self._layers
+
+    @property
+    def obsm(self) -> OBSM_NOTATION:
+        if self._obsm is None:
+            self._link_obsm()
+        return self._obsm
 
     def read_obs(self, columns: List[str] = None, reset: bool = False) -> None:
         df = self._read_df("obs", columns=columns)
@@ -282,7 +282,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def _link_layers(self) -> None:
         if self._layers is None:
-            self._layers = CapAnnDataUns()
+            self._layers = CapAnnDataDict()
         if "layers" in self._file.keys():
             group = self._file["layers"]
             for entity_name in group.keys():

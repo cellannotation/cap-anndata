@@ -1,9 +1,9 @@
-from cap_anndata import CapAnnDataUns
+from cap_anndata import CapAnnDataDict
 
 
 def test_basic_init():
     d = {'key1': 'value1', 'key2': {'value2': 'sub_value2'}}
-    cap_d = CapAnnDataUns(d)
+    cap_d = CapAnnDataDict(d)
     assert cap_d == d
     assert len(cap_d.keys_to_remove) == 0
     assert cap_d.get("key1") == "value1"
@@ -11,7 +11,7 @@ def test_basic_init():
 
 
 def test_pop():
-    cap_d = CapAnnDataUns()
+    cap_d = CapAnnDataDict()
     cap_d["key1"] = "value1"
     cap_d["key2"] = "value2"
 
