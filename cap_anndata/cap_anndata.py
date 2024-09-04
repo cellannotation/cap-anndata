@@ -198,9 +198,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
     @property
     def layers(self) -> CapAnnDataUns: # TODO: CapAnnDataLayers
         if self._layers is None:
-            self._layers = CapAnnDataUns(
-                {k: NotLinkedObject for k in self._file["layers"].keys()}
-            )
+            self._link_layers()
         return self._layers
 
     def read_obs(self, columns: List[str] = None, reset: bool = False) -> None:
@@ -282,15 +280,19 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 source = self._file[f"uns/{key}"]
                 self.uns[key] = read_elem(source)
 
-    def read_layers(self, keys: List[str] = None) -> None:
-        if keys is None:
-            keys = list(self.layers.keys())
-
-        for key in keys:
-            existing_keys = self.layers.keys()
-            if key in existing_keys:
-                source = self._file[f"layers/{key}"]
-                self.layers[key] = read_elem(source)
+    def _link_layers(self) -> None:
+        if self._layers is None:
+            self._layers = CapAnnDataUns()
+        if "layers" in self._file.keys():
+            group = self._file["layers"]
+            for entity_name in group.keys():
+                entity = group[entity_name]
+                if isinstance(entity, h5py.Dataset):
+                    # dense array
+                    self._layers[entity_name] = entity
+                else:
+                    # sparse array
+                    self._layers[entity_name] = ad.experimental.sparse_dataset(entity)
 
     def _link_obsm(self) -> None:
         self._obsm = {}
@@ -304,6 +306,9 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 else:
                     # sparse array
                     self._obsm[entity_name] = ad.experimental.sparse_dataset(entity)
+
+    def layer_keys(self) -> List[str]:
+        return list(self.layers.keys())
 
     def obsm_keys(self) -> List[str]:
         return list(self.obsm.keys())

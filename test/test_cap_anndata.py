@@ -447,15 +447,24 @@ def test_layers():
     dense_array = np.random.random((10,10))
     sparse_array = csr_matrix(np.random.random((10,10)))
 
+    # Test add layers
     with read_h5ad(file_path, edit=True) as cap_adata:
-        cap_adata.read_layers([])
         cap_adata.layers[layer_name_dense] = dense_array
         cap_adata.layers[layer_name_sparse] = sparse_array
         cap_adata.overwrite(fields=["layers"])
 
     with read_h5ad(file_path) as cap_adata:
-        cap_adata.read_layers([layer_name_dense, layer_name_sparse])
-        assert np.array_equal(dense_array, cap_adata.layers[layer_name_dense]), "Must be dense matrix!"
-        assert np.array_equal(sparse_array.todense(), cap_adata.layers[layer_name_sparse].todense()), "Must be sparse matrix!"
+        assert np.array_equal(dense_array, cap_adata.layers[layer_name_dense]), "Must be correct dense matrix!"
+        assert np.array_equal(sparse_array.todense(), cap_adata.layers[layer_name_sparse][:].todense()), "Must be correct sparse matrix!"
+
+    # Test remove layers
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.layers.pop(layer_name_dense)
+        cap_adata.layers.pop(layer_name_sparse)
+        cap_adata.overwrite(fields=["layers"])
+
+    with read_h5ad(file_path) as cap_adata:
+        assert layer_name_dense not in cap_adata.layer_keys(), "Dense matrix must be removed!"
+        assert layer_name_sparse not in cap_adata.layer_keys(), "Sparse matrix must be removed!"
 
     os.remove(file_path)
