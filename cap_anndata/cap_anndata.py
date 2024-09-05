@@ -263,10 +263,9 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 del self._file[f"uns/{key}"]
 
         if "layers" in fields:
-            for key in self.layers.keys():
-                if self.layers[key] is not NotLinkedObject:
-                    dest = f"layers/{key}"
-                    self._write_elem(dest, self.layers[key], compression=compression)
+            for key in self.layers.keys_to_add:
+                dest = f"layers/{key}"
+                self._write_elem(dest, self.layers[key], compression=compression)
             for key in self.layers.keys_to_remove:
                 del self._file[f"layers/{key}"]
 
@@ -306,9 +305,6 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 else:
                     # sparse array
                     self._obsm[entity_name] = ad.experimental.sparse_dataset(entity)
-
-    def layer_keys(self) -> List[str]:
-        return list(self.layers.keys())
 
     def obsm_keys(self) -> List[str]:
         return list(self.obsm.keys())

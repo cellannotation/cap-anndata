@@ -444,8 +444,9 @@ def test_layers():
     layer_name_dense = "layer_dense"
     layer_name_sparse = "layer_sparse"
 
-    dense_array = np.random.random((10,10))
-    sparse_array = csr_matrix(np.random.random((10,10)))
+    data = np.random.random((10,10))
+    dense_array = data
+    sparse_array = csr_matrix(data)
 
     # Test add layers
     with read_h5ad(file_path, edit=True) as cap_adata:
@@ -464,7 +465,7 @@ def test_layers():
         cap_adata.overwrite(fields=["layers"])
 
     with read_h5ad(file_path) as cap_adata:
-        assert layer_name_dense not in cap_adata.layer_keys(), "Dense matrix must be removed!"
-        assert layer_name_sparse not in cap_adata.layer_keys(), "Sparse matrix must be removed!"
+        assert layer_name_dense not in cap_adata.layers.keys(), "Dense matrix must be removed!"
+        assert layer_name_sparse not in cap_adata.layers.keys(), "Sparse matrix must be removed!"
 
     os.remove(file_path)

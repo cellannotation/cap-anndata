@@ -208,14 +208,14 @@ cap_adata.overwrite(["uns"])  # overwrite the uns secion only
 
 #### 7. Work with **layers**
 
-By the default the CapAnnData will not read the layers. 
-Links to available layers will be created upon the first call of the `.layers` property. 
-Alike the AnnData package the call like `cap_adata.layers["my_layer"]` will not return the in-memory matrix but will return the backed version instead. 
+By the default the CapAnnData will not read the layers.
+Links to available layers will be created upon the first call of the `.layers` property.
+Alike the AnnData package the call like `cap_adata.layers["my_layer"]` will not return the in-memory matrix but will return the backed version instead.
 
 ```python
 with read_h5ad(file_path=file_path, edit=True) as cap_adata:
-    # will return the list of strings
-    layer_names = cap_adata.layer_keys()  
+    # will return available layer names
+    layer_names = cap_adata.layers.keys()
 
     # return the matrix in backed mode
     my_layer = cap_adata.layers["my_layer1"]
