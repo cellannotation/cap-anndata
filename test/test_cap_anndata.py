@@ -182,8 +182,8 @@ def test_link_x(sparse, vertical_slice):
 
     os.remove(file_path)
     if sparse:
-        assert np.allclose(adata.X.A[s_], x.A)
-        assert np.allclose(adata.raw.X.A[s_], raw_x.A)
+        assert np.allclose(adata.X.toarray()[s_], x.toarray())
+        assert np.allclose(adata.raw.X.toarray()[s_], raw_x.toarray())
     else:
         assert np.allclose(adata.X[s_], x)
         assert np.allclose(adata.raw.X[s_], raw_x)
