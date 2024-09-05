@@ -468,4 +468,15 @@ def test_layers():
         assert layer_name_dense not in cap_adata.layers.keys(), "Dense matrix must be removed!"
         assert layer_name_sparse not in cap_adata.layers.keys(), "Sparse matrix must be removed!"
 
+    # Test modify layers
+    layer_name_edit = "layer_for_edit"
+    data = np.ones((10, 10))
+    with read_h5ad(file_path, edit=True) as cap_adata: # fill layer
+        cap_adata.layers[layer_name_edit] = data
+        cap_adata.overwrite(fields=["layers"])
+    with read_h5ad(file_path, edit=True) as cap_adata: # modify backed
+        cap_adata.layers[layer_name_edit][0:1,0:1] = 0
+    with read_h5ad(file_path) as cap_adata: # check is changed
+        assert False == np.array_equal(data, cap_adata.layers[layer_name_edit][:]), "Layer matrix must be edited previously!"
+
     os.remove(file_path)
