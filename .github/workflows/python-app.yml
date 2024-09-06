@@ -27,8 +27,7 @@ jobs:
     - name: Modify requirements.txt
       run: |
         # Replace >= with == in requirements.txt
-        dos2unix requirements.txt
-        perl -pi -e 's/>=/==/g' requirements.txt
+        python -c "with open('requirements.txt', 'r+') as f: content = f.read().replace('>=', '=='); f.seek(0); f.write(content); f.truncate()"
         cat requirements.txt
     - name: Install dependencies
       run: |
