@@ -20,10 +20,9 @@ setup(
     ],
     python_requires='>=3.9',
     install_requires=[
-        "numpy~=1.26.3",
-        "pandas~=2.2.0",
-        "anndata~=0.10.5",
-        "h5py~=3.5.0",
+        "numpy>=1.23.5",
+        "pandas>=2.2.0",
+        "anndata>=0.10.0",
     ],
     extras_require={"dev": [
         "pytest>=8.0.0",
