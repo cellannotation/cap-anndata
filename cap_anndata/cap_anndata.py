@@ -3,14 +3,12 @@ import anndata as ad
 import numpy as np
 import h5py
 from typing import List, Union, Dict, Tuple, Final
-from anndata._io.specs import read_elem, write_elem
 from packaging import version
 
 if version.parse(ad.__version__) < version.parse("0.11.0"):
-    from anndata.experimental import sparse_dataset
+    from anndata.experimental import sparse_dataset, read_elem, write_elem
 else:
-    from anndata import sparse_dataset
-
+    from anndata import sparse_dataset, read_elem, write_elem
 
 from cap_anndata import CapAnnDataDF, CapAnnDataUns
 
