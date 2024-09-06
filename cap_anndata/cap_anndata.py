@@ -4,6 +4,7 @@ import numpy as np
 import h5py
 from typing import List, Union, Dict, Tuple, Final
 from anndata._io.specs import read_elem, write_elem
+import scipy.sparse as sp
 
 from cap_anndata import CapAnnDataDF, CapAnnDataDict
 
@@ -269,6 +270,28 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.layers.keys_to_remove:
                 del self._file[f"layers/{key}"]
 
+    def add_empty_layer(self, name, shape, dtype, compression: str = "lzf") -> None:
+        if name in self.layers.keys():
+            del self._file[f'layers/{name}']
+
+        array = np.empty(shape=shape, dtype=dtype)
+        array = sp.csr_matrix(array, dtype=dtype)
+        self.layers[name] = array
+
+        dest = f"layers/{name}"
+        self._write_elem(dest, array, compression=compression)
+
+    def fill_layer_with_chunk(self, name, chunk_data, left, right) -> None:
+        entity = self.layers[name]
+        if isinstance(entity, h5py.Dataset):
+            # dense array
+            self._file[f"layers/{name}"].write_direct(chunk_data, np.s_[:], np.s_[left:right, :])
+        else:
+            # sparse array
+            i_from = self._file[f'layers/{name}/indptr'][left]
+            i_to = self._file[f'layers/{name}/indptr'][right]
+            self._file[f'layers/{name}/data'].write_direct(chunk_data, np.s_[:], np.s_[i_from:i_to])
+
     def read_uns(self, keys: List[str] = None) -> None:
         if keys is None:
             keys = list(self.uns.keys())
@@ -292,6 +315,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 else:
                     # sparse array
                     self._layers[entity_name] = ad.experimental.sparse_dataset(entity)
+        else:
+            _ = self._file.create_group('layers')
 
     def _link_obsm(self) -> None:
         self._obsm = {}

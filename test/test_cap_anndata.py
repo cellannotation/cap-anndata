@@ -444,7 +444,8 @@ def test_layers():
     layer_name_dense = "layer_dense"
     layer_name_sparse = "layer_sparse"
 
-    data = np.random.random((10,10))
+    shape = (10,10)
+    data = np.random.random(shape)
     dense_array = data
     sparse_array = csr_matrix(data)
 
@@ -478,5 +479,15 @@ def test_layers():
         cap_adata.layers[layer_name_edit][0:1,0:1] = 0
     with read_h5ad(file_path) as cap_adata: # check is changed
         assert False == np.array_equal(data, cap_adata.layers[layer_name_edit][:]), "Layer matrix must be edited previously!"
+
+    # Test add empty sparse data layer and edit it in chunks way
+    layer_name_empty = "layer_empty"
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.add_empty_layer(layer_name_empty, shape, np.float32)
+    with read_h5ad(file_path, edit=True) as cap_adata: # modify by chunk
+        array = np.ones((18,))
+        cap_adata.fill_layer_with_chunk(layer_name_empty, array, 2, 4)
+    with read_h5ad(file_path) as cap_adata: # check is changed
+        assert np.any(cap_adata.layers[layer_name_empty][:].toarray() == 1), "Layer matrix must be edited previously!"
 
     os.remove(file_path)
