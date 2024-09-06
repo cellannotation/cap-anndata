@@ -27,6 +27,7 @@ jobs:
     - name: Modify requirements.txt
       run: |
         # Replace >= with == in requirements.txt
+        dos2unix requirements.txt
         perl -pi -e 's/>=/==/g' requirements.txt
         cat requirements.txt
     - name: Install dependencies
