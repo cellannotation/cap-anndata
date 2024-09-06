@@ -27,13 +27,12 @@ jobs:
     - name: Modify requirements.txt
       run: |
         # Replace >= with == in requirements.txt
-        sed -i 's/>=/==/g' requirements.txt
+        perl -pi -e 's/>=/==/g' requirements.txt
         cat requirements.txt
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest
-        cat requirements.txt
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
