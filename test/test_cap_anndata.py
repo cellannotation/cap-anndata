@@ -471,7 +471,7 @@ def test_layers():
 
     # Test modify layers
     layer_name_edit = "layer_for_edit"
-    data = np.ones((10, 10))
+    data = np.ones(shape)
     with read_h5ad(file_path, edit=True) as cap_adata: # fill layer
         cap_adata.layers[layer_name_edit] = data
         cap_adata.overwrite(fields=["layers"])
@@ -480,14 +480,23 @@ def test_layers():
     with read_h5ad(file_path) as cap_adata: # check is changed
         assert False == np.array_equal(data, cap_adata.layers[layer_name_edit][:]), "Layer matrix must be edited previously!"
 
-    # Test add empty sparse data layer and edit it in chunks way
-    layer_name_empty = "layer_empty"
+    # Test add empty dense and sparse data layers and edit them
+    layer_name_empty_dense = "layer_empty_dense"
+    layer_name_empty_sparse = "layer_empty_sparse"
     with read_h5ad(file_path, edit=True) as cap_adata:
-        cap_adata.add_empty_layer(layer_name_empty, shape, np.float32)
-    with read_h5ad(file_path, edit=True) as cap_adata: # modify by chunk
-        array = np.ones((18,))
-        cap_adata.fill_layer_with_chunk(layer_name_empty, array, 2, 4)
+        cap_adata.create_layer(name=layer_name_empty_dense, matrix=None, matrix_shape=shape, data_dtype=np.float32, format="dense")
+        cap_adata.create_layer(name=layer_name_empty_sparse, matrix=None, matrix_shape=shape, indices_shape=sparse_array.indices.shape, data_shape=sparse_array.data.shape, indptr_shape=sparse_array.indptr.shape, indptr_size=sparse_array.indptr.size, data_dtype="<f4", format="csr")
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        # Modify dense dataset
+        cap_adata.layers[layer_name_empty_dense][0, 0] = 1
+        # Modify sparse dataset
+        sparse_dataset = cap_adata.layers[layer_name_empty_sparse] # CSRDataset
+        data_chunk = np.ones((3,10))
+        sparse_array_chunk = csr_matrix(data_chunk)
+        # https://github.com/scverse/anndata/blob/d7643e966b7cfaf8f5c732f1f020b0674db1def9/src/anndata/_core/sparse_dataset.py#L471
+        sparse_dataset.append(sparse_array_chunk)
     with read_h5ad(file_path) as cap_adata: # check is changed
-        assert np.any(cap_adata.layers[layer_name_empty][:].toarray() == 1), "Layer matrix must be edited previously!"
+        assert np.any(cap_adata.layers[layer_name_empty_dense][:] == 1), "Dense layer is not changed!"
+        assert np.any(cap_adata.layers[layer_name_empty_sparse][:].toarray() == 1), "Layer matrix must be edited previously!"
 
     os.remove(file_path)

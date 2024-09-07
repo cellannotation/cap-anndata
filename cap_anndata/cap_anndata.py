@@ -275,27 +275,48 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.layers.keys_to_remove:
                 del self._file[f"layers/{key}"]
 
-    def add_empty_layer(self, name, shape, dtype, compression: str = "lzf") -> None:
-        if name in self.layers.keys():
-            del self._file[f'layers/{name}']
-
-        array = np.empty(shape=shape, dtype=dtype)
-        array = sp.csr_matrix(array, dtype=dtype)
-        self.layers[name] = array
-
+    def create_layer(self,
+                     name: str,
+                     matrix: np.ndarray | None = None, # TODO: | sparse_dataset for `matrix`
+                     matrix_shape: tuple[int, int] | None = None,
+                     indices_shape: tuple[int, int] | None = None,
+                     data_shape: tuple[int, int] | None = None,
+                     indptr_shape: tuple[int, int] | None = None,
+                     indptr_size: int | None = None,
+                     data_dtype: np.dtype | None = None,
+                     format: str | None = None,
+                     compression: str = "lzf"
+                    ) -> None:
         dest = f"layers/{name}"
-        self._write_elem(dest, array, compression=compression)
+        if name in self.layers.keys():
+            del self._file[dest]
 
-    def fill_layer_with_chunk(self, name, chunk_data, left, right) -> None:
-        entity = self.layers[name]
-        if isinstance(entity, h5py.Dataset):
-            # dense array
-            self._file[f"layers/{name}"].write_direct(chunk_data, np.s_[:], np.s_[left:right, :])
+        if matrix is not None:
+            self._write_elem(dest, matrix, compression=compression)
         else:
-            # sparse array
-            i_from = self._file[f'layers/{name}/indptr'][left]
-            i_to = self._file[f'layers/{name}/indptr'][right]
-            self._file[f'layers/{name}/data'].write_direct(chunk_data, np.s_[:], np.s_[i_from:i_to])
+            if format == "dense":
+                _ = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype)
+            elif format in ["csr", "csc"]:
+                group = self._file.create_group(dest)
+                attrs = {
+                    'encoding-type': 'csr_matrix',
+                    'encoding-version': '0.1.0',
+                    'shape': matrix_shape,
+                }
+                for atr, val in attrs.items():
+                    group.attrs.create(atr, val) # Fill the required attributes accorind AnnData documentation
+                
+                # https://docs.h5py.org/en/stable/high/dataset.html#chunked-storage
+                indices = self._file[dest].create_dataset("indices", shape=(0,), dtype="<i4", maxshape=indices_shape, chunks=True)
+                data = self._file[dest].create_dataset("data", shape=(0,), dtype=data_dtype, maxshape=data_shape, chunks=True)
+                indptr = self._file[dest].create_dataset("indptr", shape=indptr_shape, dtype="<i4", chunks=True) # maxshape=indptr_shape, 
+            
+                # TODO: Create in memory version of inptr to handle
+                indptr = np.empty(shape=(indptr_size,), dtype="<i4")
+            else:
+                raise NotImplementedError
+
+        self._layers[name] = self._file[dest]
 
     def read_uns(self, keys: List[str] = None) -> None:
         if keys is None:
