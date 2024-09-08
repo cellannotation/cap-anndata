@@ -275,9 +275,10 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.layers.keys_to_remove:
                 del self._file[f"layers/{key}"]
 
+    # TODO: | ss.csr_matrix | ss.csc_matrix for matrix
     def create_layer(self,
                      name: str,
-                     matrix: np.ndarray | None = None, # TODO: | ss.csr_matrix | ss.csc_matrix
+                     matrix: np.ndarray | None = None,
                      matrix_shape: tuple[int, int] | None = None,
                      data_dtype: np.dtype | None = None,
                      indices_dtype: np.dtype | None = None,
