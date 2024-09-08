@@ -3,7 +3,7 @@ import anndata as ad
 import numpy as np
 import h5py
 from typing import List, Union, Dict, Tuple, Final
-import scipy.sparse as sp
+from scipy.sparse import csr_matrix, csc_matrix
 from packaging import version
 
 if version.parse(ad.__version__) < version.parse("0.11.0"):
@@ -277,13 +277,11 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def create_layer(self,
                      name: str,
-                     matrix: np.ndarray | None = None, # TODO: | sparse_dataset for `matrix`
+                     matrix: np.ndarray | csr_matrix | csc_matrix | None = None,
                      matrix_shape: tuple[int, int] | None = None,
-                     indices_shape: tuple[int, int] | None = None,
-                     data_shape: tuple[int, int] | None = None,
-                     indptr_shape: tuple[int, int] | None = None,
-                     indptr_size: int | None = None,
                      data_dtype: np.dtype | None = None,
+                     indices_dtype: np.dtype | None = None,
+                     indptr_dtype: np.dtype | None = None,
                      format: str | None = None,
                      compression: str = "lzf"
                     ) -> None:
@@ -296,23 +294,19 @@ class CapAnnData(BaseLayerMatrixAndDf):
         else:
             if format == "dense":
                 _ = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype)
-            elif format in ["csr", "csc"]:
+            elif format in ["csr", "csc"]: # Based on https://github.com/appier/h5sparse/blob/master/h5sparse/h5sparse.py
+                if data_dtype is None:
+                    data_dtype = np.float64
+                if matrix_shape is None:
+                    matrix_shape = (0, 0)
+                sparse_class = csr_matrix if format == "csr" else csc_matrix
+                data = sparse_class(matrix_shape, dtype=data_dtype)
                 group = self._file.create_group(dest)
-                attrs = {
-                    'encoding-type': 'csr_matrix',
-                    'encoding-version': '0.1.0',
-                    'shape': matrix_shape,
-                }
-                for atr, val in attrs.items():
-                    group.attrs.create(atr, val) # Fill the required attributes accorind AnnData documentation
-                
-                # https://docs.h5py.org/en/stable/high/dataset.html#chunked-storage
-                indices = self._file[dest].create_dataset("indices", shape=(0,), dtype="<i4", maxshape=indices_shape, chunks=True)
-                data = self._file[dest].create_dataset("data", shape=(0,), dtype=data_dtype, maxshape=data_shape, chunks=True)
-                indptr = self._file[dest].create_dataset("indptr", shape=indptr_shape, dtype="<i4", chunks=True) # maxshape=indptr_shape, 
-            
-                # TODO: Create in memory version of inptr to handle
-                indptr = np.empty(shape=(indptr_size,), dtype="<i4")
+                group.attrs['h5sparse_format'] = format
+                group.attrs['h5sparse_shape'] = data.shape
+                group.create_dataset('data', data=data.data, dtype=data_dtype, maxshape=(None,), chunks=True)
+                group.create_dataset('indices', data=data.indices, dtype=indices_dtype, maxshape=(None,), chunks=True)
+                group.create_dataset('indptr', data=data.indptr, dtype=indptr_dtype, maxshape=(None,), chunks=True)
             else:
                 raise NotImplementedError
 

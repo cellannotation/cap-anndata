@@ -485,16 +485,14 @@ def test_layers():
     layer_name_empty_sparse = "layer_empty_sparse"
     with read_h5ad(file_path, edit=True) as cap_adata:
         cap_adata.create_layer(name=layer_name_empty_dense, matrix=None, matrix_shape=shape, data_dtype=np.float32, format="dense")
-        cap_adata.create_layer(name=layer_name_empty_sparse, matrix=None, matrix_shape=shape, indices_shape=sparse_array.indices.shape, data_shape=sparse_array.data.shape, indptr_shape=sparse_array.indptr.shape, indptr_size=sparse_array.indptr.size, data_dtype="<f4", format="csr")
+        cap_adata.create_layer(name=layer_name_empty_sparse, matrix=None, matrix_shape=shape, data_dtype=sparse_array.data.dtype, indices_dtype=sparse_array.indices.dtype, indptr_dtype=sparse_array.indptr.dtype, format="csr")
     with read_h5ad(file_path, edit=True) as cap_adata:
         # Modify dense dataset
         cap_adata.layers[layer_name_empty_dense][0, 0] = 1
         # Modify sparse dataset
         sparse_dataset = cap_adata.layers[layer_name_empty_sparse] # CSRDataset
-        data_chunk = np.ones((3,10))
-        sparse_array_chunk = csr_matrix(data_chunk)
-        # https://github.com/scverse/anndata/blob/d7643e966b7cfaf8f5c732f1f020b0674db1def9/src/anndata/_core/sparse_dataset.py#L471
-        sparse_dataset.append(sparse_array_chunk)
+        chunk_data = csr_matrix(np.ones((1,10)))
+        sparse_dataset.append(chunk_data)
     with read_h5ad(file_path) as cap_adata: # check is changed
         assert np.any(cap_adata.layers[layer_name_empty_dense][:] == 1), "Dense layer is not changed!"
         assert np.any(cap_adata.layers[layer_name_empty_sparse][:].toarray() == 1), "Layer matrix must be edited previously!"
