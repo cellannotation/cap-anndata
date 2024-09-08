@@ -3,7 +3,7 @@ import anndata as ad
 import numpy as np
 import h5py
 from typing import List, Union, Dict, Tuple, Final
-from scipy.sparse import csr_matrix, csc_matrix
+import scipy.sparse as ss
 from packaging import version
 
 if version.parse(ad.__version__) < version.parse("0.11.0"):
@@ -277,7 +277,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def create_layer(self,
                      name: str,
-                     matrix: np.ndarray | csr_matrix | csc_matrix | None = None,
+                     matrix: np.ndarray | ss.csr_matrix | ss.csc_matrix | None = None,
                      matrix_shape: tuple[int, int] | None = None,
                      data_dtype: np.dtype | None = None,
                      indices_dtype: np.dtype | None = None,
@@ -299,7 +299,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     data_dtype = np.float64
                 if matrix_shape is None:
                     matrix_shape = (0, 0)
-                sparse_class = csr_matrix if format == "csr" else csc_matrix
+                sparse_class = ss.csr_matrix if format == "csr" else ss.csc_matrix
                 data = sparse_class(matrix_shape, dtype=data_dtype)
                 group = self._file.create_group(dest)
                 group.attrs['h5sparse_format'] = format
