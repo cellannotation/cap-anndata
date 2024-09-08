@@ -278,11 +278,11 @@ class CapAnnData(BaseLayerMatrixAndDf):
     def create_layer(self,
                      name: str,
                      matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
-                     matrix_shape: tuple[int, int] | None = None,
-                     data_dtype: np.dtype | None = None,
-                     indices_dtype: np.dtype | None = None,
-                     indptr_dtype: np.dtype | None = None,
-                     format: str | None = None,
+                     matrix_shape: Union[tuple[int, int], None] = None,
+                     data_dtype: Union[np.dtype, None] = None,
+                     indices_dtype: Union[np.dtype, None] = None,
+                     indptr_dtype: Union[np.dtype, None] = None,
+                     format: Union[str, None] = None,
                      compression: str = "lzf"
                     ) -> None:
         dest = f"layers/{name}"
