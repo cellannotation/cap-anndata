@@ -277,7 +277,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def create_layer(self,
                      name: str,
-                     matrix: np.ndarray | ss.csr_matrix | ss.csc_matrix | None = None,
+                     matrix: np.ndarray | None = None, # TODO: | ss.csr_matrix | ss.csc_matrix
                      matrix_shape: tuple[int, int] | None = None,
                      data_dtype: np.dtype | None = None,
                      indices_dtype: np.dtype | None = None,
