@@ -309,7 +309,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 keys = [(k if k not in in_memory else f'{k}*') for k in keys]
                 keys_str = str(keys).replace("*'", "'*")
                 s += f"\n{indent}{field}: {keys_str}"
-        s += f"\nNote: fields marked with * are in-memory objects."
+        s += f"\n{indent}Note: fields marked with * are in-memory objects."
         return s
 
     def __repr__(self) -> str:
