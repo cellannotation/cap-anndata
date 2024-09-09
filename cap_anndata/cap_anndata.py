@@ -287,13 +287,16 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     ) -> None:
         dest = f"layers/{name}"
         if name in self.layers.keys():
-            del self._file[dest]
+            raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one!")
 
         if matrix is not None:
             self._write_elem(dest, matrix, compression=compression)
         else:
             if format == "dense":
-                _ = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype)
+                group = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype)
+                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#dense-arrays-specification-v0-2-0
+                group.attrs['encoding-type'] = 'array'
+                group.attrs['encoding-version'] = '0.2.0'
             elif format in ["csr", "csc"]: # Based on https://github.com/appier/h5sparse/blob/master/h5sparse/h5sparse.py
                 if data_dtype is None:
                     data_dtype = np.float64
@@ -310,7 +313,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             else:
                 raise NotImplementedError
 
-        self._layers[name] = self._file[dest]
+        self._link_layers()
 
     def read_uns(self, keys: List[str] = None) -> None:
         if keys is None:
