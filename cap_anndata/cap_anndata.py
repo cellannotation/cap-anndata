@@ -3,6 +3,7 @@ import anndata as ad
 import numpy as np
 import h5py
 from typing import List, Union, Dict, Tuple, Final
+import scipy.sparse as ss
 from packaging import version
 
 if version.parse(ad.__version__) < version.parse("0.11.0"):
@@ -10,7 +11,7 @@ if version.parse(ad.__version__) < version.parse("0.11.0"):
 else:
     from anndata import sparse_dataset, read_elem, write_elem
 
-from cap_anndata import CapAnnDataDF, CapAnnDataUns
+from cap_anndata import CapAnnDataDF, CapAnnDataDict
 
 
 logger = logging.getLogger(__name__)
@@ -149,7 +150,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
         self._var: CapAnnDataDF = None
         self._X: X_NOTATION = None
         self._obsm: OBSM_NOTATION = None
-        self._uns: CapAnnDataUns = None
+        self._layers: CapAnnDataDict = None
+        self._uns: CapAnnDataDict = None
         self._raw: RawLayer = None
         self._shape: Tuple[int, int] = None
 
@@ -176,12 +178,6 @@ class CapAnnData(BaseLayerMatrixAndDf):
         self._var = cap_df
 
     @property
-    def obsm(self) -> OBSM_NOTATION:
-        if self._obsm is None:
-            self._link_obsm()
-        return self._obsm
-
-    @property
     def raw(self) -> RawLayer:
         if self._raw is None:
             if "raw" not in self._file.keys():
@@ -192,12 +188,24 @@ class CapAnnData(BaseLayerMatrixAndDf):
         return self._raw
 
     @property
-    def uns(self) -> CapAnnDataUns:
+    def uns(self) -> CapAnnDataDict:
         if self._uns is None:
-            self._uns = CapAnnDataUns(
+            self._uns = CapAnnDataDict(
                 {k: NotLinkedObject for k in self._file["uns"].keys()}
             )
         return self._uns
+
+    @property
+    def layers(self) -> CapAnnDataDict:
+        if self._layers is None:
+            self._link_layers()
+        return self._layers
+
+    @property
+    def obsm(self) -> OBSM_NOTATION:
+        if self._obsm is None:
+            self._link_obsm()
+        return self._obsm
 
     def read_obs(self, columns: List[str] = None, reset: bool = False) -> None:
         df = self._read_df("obs", columns=columns)
@@ -221,6 +229,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             "var": self.var,
             "raw.var": self.raw.var if self.raw is not None else None,
             "uns": self.uns,
+            "layers": self.layers,
         }
 
         if fields is None:
@@ -259,6 +268,60 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.uns.keys_to_remove:
                 del self._file[f"uns/{key}"]
 
+        if "layers" in fields:
+            for key in self.layers.keys_to_remove:
+                del self._file[f"layers/{key}"]
+
+    def create_layer(self,
+                     name: str,
+                     matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+                     matrix_shape: Union[tuple[int, int], None] = None,
+                     data_dtype: Union[np.dtype, None] = None,
+                     format: Union[str, None] = None,
+                     compression: str = "lzf"
+                    ) -> None:
+        """
+        The empty layer will be created in the case of `matrix` is None.
+        """
+        dest = f"layers/{name}"
+
+        if "layers" not in self._file.keys():
+            self._file.create_group('layers')
+
+        if name in self.layers.keys():
+            raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one! Use `remove_layer` method.")
+
+        if matrix is not None:
+            self._write_elem(dest, matrix, compression=compression)
+        else:
+            if format == "dense":
+                group = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype, compression=compression)
+                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#dense-arrays-specification-v0-2-0
+                group.attrs['encoding-type'] = 'array'
+                group.attrs['encoding-version'] = '0.2.0'
+            elif format in ["csr", "csc"]: # Based on https://github.com/appier/h5sparse/blob/master/h5sparse/h5sparse.py
+                if data_dtype is None:
+                    data_dtype = np.float64
+                if matrix_shape is None:
+                    matrix_shape = (0, 0)
+                sparse_class = ss.csr_matrix if format == "csr" else ss.csc_matrix
+                data = sparse_class(matrix_shape, dtype=data_dtype)
+                group = self._file.create_group(dest)
+                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#sparse-arrays
+                group.attrs['encoding-type'] = f'{format}_matrix'
+                group.attrs['encoding-version'] = '0.1.0'
+                group.attrs['shape'] = matrix_shape
+                group.create_dataset('data', data=data.data, dtype=data_dtype, maxshape=(None,), chunks=True, compression=compression)
+                group.create_dataset('indices', data=data.indices, dtype=data.indices.dtype, maxshape=(None,), chunks=True, compression=compression)
+                group.create_dataset('indptr', data=data.indptr, dtype=data.indptr.dtype, maxshape=(None,), chunks=True, compression=compression)
+            else:
+                raise NotImplementedError(f"Format must  be 'dense', 'csr' or 'csc' but {format} given!")
+
+        self._link_layers()
+
+    def remove_layer(self, name: str):
+        del self._file[f"layers/{name}"]
+
     def read_uns(self, keys: List[str] = None) -> None:
         if keys is None:
             keys = list(self.uns.keys())
@@ -268,6 +331,20 @@ class CapAnnData(BaseLayerMatrixAndDf):
             if key in existing_keys:
                 source = self._file[f"uns/{key}"]
                 self.uns[key] = read_elem(source)
+
+    def _link_layers(self) -> None:
+        if self._layers is None:
+            self._layers = CapAnnDataDict()
+        if "layers" in self._file.keys():
+            group = self._file["layers"]
+            for entity_name in group.keys():
+                entity = group[entity_name]
+                if isinstance(entity, h5py.Dataset):
+                    # dense array
+                    self._layers[entity_name] = entity
+                else:
+                    # sparse array
+                    self._layers[entity_name] = sparse_dataset(entity)
 
     def _link_obsm(self) -> None:
         self._obsm = {}

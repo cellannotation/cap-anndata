@@ -1,4 +1,5 @@
 import anndata as ad
+from scipy.sparse import csr_matrix, csc_matrix
 import numpy as np
 import tempfile
 import os
@@ -431,3 +432,113 @@ def test_df_setter(field):
             assert False, f"Unexpected exception: {e}"
         else:
             assert False, "Expected ValueError"
+
+
+def test_layer_base_operations():
+    adata = get_filled_anndata()
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_layers.h5ad")
+
+    adata.write_h5ad(file_path)
+
+    layer_name_dense = "layer_dense"
+    layer_name_sparse = "layer_sparse"
+
+    shape = (10,10)
+    data = np.random.random(shape)
+    dense_array = data
+    sparse_array = csr_matrix(data)
+
+    # Test add layers
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.create_layer(name=layer_name_dense, matrix=dense_array)
+        cap_adata.create_layer(name=layer_name_sparse, matrix=sparse_array)
+
+    with read_h5ad(file_path) as cap_adata:
+        assert np.array_equal(dense_array, cap_adata.layers[layer_name_dense]), "Must be correct dense matrix!"
+        assert np.array_equal(sparse_array.todense(), cap_adata.layers[layer_name_sparse][:].todense()), "Must be correct sparse matrix!"
+
+    # Test remove layers
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.remove_layer(layer_name_dense)
+        cap_adata.remove_layer(layer_name_sparse)
+
+    with read_h5ad(file_path) as cap_adata:
+        assert layer_name_dense not in cap_adata.layers.keys(), "Dense matrix must be removed!"
+        assert layer_name_sparse not in cap_adata.layers.keys(), "Sparse matrix must be removed!"
+
+    # Test modify layers
+    layer_name_edit = "layer_for_edit"
+    data = np.ones(shape)
+    with read_h5ad(file_path, edit=True) as cap_adata: # fill layer
+        cap_adata.create_layer(name=layer_name_edit, matrix=data)
+    with read_h5ad(file_path, edit=True) as cap_adata: # modify backed
+        cap_adata.layers[layer_name_edit][0:1,0:1] = 0
+    with read_h5ad(file_path) as cap_adata: # check is changed
+        assert False == np.array_equal(data, cap_adata.layers[layer_name_edit][:]), "Layer matrix must be edited previously!"
+
+    os.remove(file_path)
+
+
+def test_layer_create_append():
+    adata = get_filled_anndata()
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_layers.h5ad")
+
+    adata.write_h5ad(file_path)
+
+    shape = (10,10)
+    data = np.random.random(shape)
+
+    # Test add empty dense and sparse data layers and edit them
+    layer_name_empty_dense = "layer_empty_dense"
+    def layer_name_empty_sparse(format: str):
+        return f"layer_empty_sparse_{format}"
+    def sparse_array_class(format: str):
+        return csr_matrix if format == "csr" else csc_matrix
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.create_layer(
+            name=layer_name_empty_dense,
+            matrix=None,
+            matrix_shape=shape,
+            data_dtype=np.float32,
+            format="dense",
+        )
+        for format in ["csr", "csc"]:
+            array_class = sparse_array_class(format)
+            sparse_array = array_class(data)
+            name = layer_name_empty_sparse(format)
+            cap_adata.create_layer(
+                name=name,
+                matrix=None,
+                matrix_shape=shape,
+                data_dtype=sparse_array.data.dtype,
+                format=format,
+            )
+    sparse_info = {}
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        # Modify dense dataset
+        cap_adata.layers[layer_name_empty_dense][0, 0] = 1
+        # Modify sparse datasets
+        for format in ["csr", "csc"]:
+            name = layer_name_empty_sparse(format)
+            sparse_dataset = cap_adata.layers[name]
+            chunk_shape = (1,10) if format == "csr" else (10,1)
+            array_class = sparse_array_class(format)
+            chunk_data = array_class(np.ones(chunk_shape))
+            sparse_dataset.append(chunk_data)
+            sparse_info[format] = {
+                "shape": chunk_data.data.shape,
+                "dtype": chunk_data.data.dtype,
+            }
+    with read_h5ad(file_path) as cap_adata: # check is changed
+        assert np.any(cap_adata.layers[layer_name_empty_dense][:] == 1), "Dense layer is not changed!"
+        for format in ["csr", "csc"]:
+            name = layer_name_empty_sparse(format)
+            matrix = cap_adata.layers[name][:]
+            assert np.any(matrix.toarray() == 1), f"Layer {format} matrix must be edited previously!"
+            assert matrix.data.shape == sparse_info[format]["shape"], "shape is incorrect!"
+            assert matrix.data.dtype == sparse_info[format]["dtype"], "dtype is wrong!"
+
+    os.remove(file_path)

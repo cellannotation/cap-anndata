@@ -59,5 +59,5 @@
   - Handle the `X` and `raw.X` matrices efficiently.
   - Link and manage `obsm` and `uns` sections lazily, loading them only when accessed.
 - Included the `CapAnnDataDF` class to extend `pandas.DataFrame` for handling partial reads and writes, with additional methods for renaming and removing columns.
-- Provided the `CapAnnDataUns` class to manage the `uns` section of AnnData files, tracking keys to remove upon overwrite.
+- Provided the `CapAnnDataDict` class to manage the `uns` section of AnnData files, tracking keys to remove upon overwrite.
 - Implemented methods to facilitate in-memory modifications and saving changes back to the file, including the `overwrite` method to selectively update sections of the AnnData file.
