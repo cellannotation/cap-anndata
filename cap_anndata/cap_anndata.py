@@ -305,8 +305,10 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     if attr is not None:
                         in_memory = set(attr.keys())
                 keys = list(self._file[field].keys())
+                keys = [k for k in keys if k != '_index']
                 keys = [(k if k not in in_memory else f'{k}*') for k in keys]
-                s += f"\n{indent}{field}: {keys}"
+                keys_str = str(keys).replace("*'", "'*")
+                s += f"\n{indent}{field}: {keys_str}"
         s += f"\nNote: fields marked with * are in-memory objects."
         return s
 
