@@ -290,3 +290,20 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def var_keys(self) -> List[str]:
         return self.var.column_order.tolist()
+
+    def create_repr(self) -> str:
+        indent = " " * 4
+        s = f"CapAnnData object"
+        s += f"\n{indent}X shape: {self.shape}"
+        s += f"\n{indent}Has raw X: {self.raw is not None}"
+        for field in ["obs", "obsm", "var", "uns", "layers"]:
+            if field in self._file:
+                keys = list(self._file[field].keys())
+                s += f"\n{indent}{field}: {keys}"
+        return s
+
+    def __repr__(self) -> str:
+        return self.create_repr()
+
+    def __str__(self) -> str:
+        return self.create_repr()
