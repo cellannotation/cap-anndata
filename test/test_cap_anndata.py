@@ -521,6 +521,7 @@ def test_layer_create_append():
                 indptr_dtype=sparse_array.indptr.dtype,
                 format=format,
             )
+    sparse_info = {}
     with read_h5ad(file_path, edit=True) as cap_adata:
         # Modify dense dataset
         cap_adata.layers[layer_name_empty_dense][0, 0] = 1
@@ -532,10 +533,17 @@ def test_layer_create_append():
             array_class = sparse_array_class(format)
             chunk_data = array_class(np.ones(chunk_shape))
             sparse_dataset.append(chunk_data)
+            sparse_info[format] = {
+                "shape": chunk_data.data.shape,
+                "dtype": chunk_data.data.dtype,
+            }
     with read_h5ad(file_path) as cap_adata: # check is changed
         assert np.any(cap_adata.layers[layer_name_empty_dense][:] == 1), "Dense layer is not changed!"
         for format in ["csr", "csc"]:
             name = layer_name_empty_sparse(format)
-            assert np.any(cap_adata.layers[name][:].toarray() == 1), f"Layer {format} matrix must be edited previously!"
+            matrix = cap_adata.layers[name][:]
+            assert np.any(matrix.toarray() == 1), f"Layer {format} matrix must be edited previously!"
+            assert matrix.data.shape == sparse_info[format]["shape"], "shape is incorrect!"
+            assert matrix.data.dtype == sparse_info[format]["dtype"], "dtype is wrong!"
 
     os.remove(file_path)
