@@ -369,3 +369,30 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def var_keys(self) -> List[str]:
         return self.var.column_order.tolist()
+
+    def create_repr(self) -> str:
+        indent = " " * 4
+        s = f"CapAnnData object"
+        s += f"\n{indent}File: {self._file}"
+        s += f"\n{indent}X shape: {self.shape}"
+        s += f"\n{indent}Has raw X: {self.raw is not None}"
+        for field in ["obs", "obsm", "var", "uns", "layers"]:
+            if field in self._file:
+                in_memory = set()
+                if field in ["obs", "var", "uns"]:
+                    attr = getattr(self, field)
+                    if attr is not None:
+                        in_memory = set(attr.keys())
+                keys = list(self._file[field].keys())
+                keys = [k for k in keys if k != '_index']
+                keys = [(k if k not in in_memory else f'{k}*') for k in keys]
+                keys_str = str(keys).replace("*'", "'*")
+                s += f"\n{indent}{field}: {keys_str}"
+        s += f"\n{indent}Note: fields marked with * are in-memory objects."
+        return s
+
+    def __repr__(self) -> str:
+        return self.create_repr()
+
+    def __str__(self) -> str:
+        return self.create_repr()
