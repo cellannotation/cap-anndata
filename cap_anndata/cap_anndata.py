@@ -294,6 +294,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
     def create_repr(self) -> str:
         indent = " " * 4
         s = f"CapAnnData object"
+        s += f"\n{indent}File: {self._file}"
         s += f"\n{indent}X shape: {self.shape}"
         s += f"\n{indent}Has raw X: {self.raw is not None}"
         for field in ["obs", "obsm", "var", "uns", "layers"]:
