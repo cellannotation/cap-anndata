@@ -284,6 +284,10 @@ class CapAnnData(BaseLayerMatrixAndDf):
         The empty layer will be created in the case of `matrix` is None.
         """
         dest = f"layers/{name}"
+
+        if "layers" not in self._file.keys():
+            self._file.create_group('layers')
+
         if name in self.layers.keys():
             raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one! Use `remove_layer` method.")
 
@@ -341,8 +345,6 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 else:
                     # sparse array
                     self._layers[entity_name] = sparse_dataset(entity)
-        else:
-            _ = self._file.create_group('layers')
 
     def _link_obsm(self) -> None:
         self._obsm = {}
