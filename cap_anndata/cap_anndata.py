@@ -305,6 +305,10 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 sparse_class = ss.csr_matrix if format == "csr" else ss.csc_matrix
                 data = sparse_class(matrix_shape, dtype=data_dtype)
                 group = self._file.create_group(dest)
+                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#sparse-arrays
+                group.attrs['encoding-type'] = f'{format}_matrix'
+                group.attrs['encoding-version'] = '0.1.0'
+                group.attrs['shape'] = matrix_shape
                 group.attrs['h5sparse_format'] = format
                 group.attrs['h5sparse_shape'] = data.shape
                 group.create_dataset('data', data=data.data, dtype=data_dtype, maxshape=(None,), chunks=True)
