@@ -212,6 +212,7 @@ By the default the CapAnnData will not read the layers.
 Links to available layers will be created upon the first call of the `.layers` property.
 Alike the AnnData package the call like `cap_adata.layers["my_layer"]` will not return the in-memory matrix but will return the backed version instead.
 
+Base operations on layers:
 ```python
 with read_h5ad(file_path=file_path, edit=True) as cap_adata:
     # will return available layer names
@@ -231,6 +232,36 @@ with read_h5ad(file_path=file_path, edit=True) as cap_adata:
 
     # save changes
     cap_adata.overwrite(["layers"])
+```
+
+Additional operations:
+```python
+with read_h5ad(file_path=file_path, edit=True) as cap_adata:
+    # Create empty layer for dense array
+    cap_adata.create_layer(
+        name="dense_array",
+        matrix=None,
+        matrix_shape=shape,
+        data_dtype=dtype,
+        format="dense",
+    )
+    # Create empty layer for sparse matrix
+    cap_adata.create_layer(
+        name="sparse_matrix",
+        matrix=None,
+        matrix_shape=shape,
+        data_dtype=dtype,
+        indices_dtype=indices_type,
+        indptr_dtype=indptr_type,
+        format=format, # 'csr' or 'csc'
+    )
+    # Add data
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        # Dense dataset
+        cap_adata.layers["dense_array"][0, 0] = 1
+        # Sparse datasets
+        sparse_dataset = cap_adata.layers["sparse_matrix"]
+        sparse_dataset.append(chunk_data) # chunk_data must be 'csr' or 'csc' matrix
 ```
 
 #### 8. Join and Merge DataFrames

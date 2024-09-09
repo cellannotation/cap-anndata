@@ -285,6 +285,9 @@ class CapAnnData(BaseLayerMatrixAndDf):
                      format: Union[str, None] = None,
                      compression: str = "lzf"
                     ) -> None:
+        """
+        The empty layer will be created in the case of `matrix` is None.
+        """
         dest = f"layers/{name}"
         if name in self.layers.keys():
             raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one!")
