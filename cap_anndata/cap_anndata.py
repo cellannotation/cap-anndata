@@ -299,8 +299,15 @@ class CapAnnData(BaseLayerMatrixAndDf):
         s += f"\n{indent}Has raw X: {self.raw is not None}"
         for field in ["obs", "obsm", "var", "uns", "layers"]:
             if field in self._file:
+                in_memory = set()
+                if field in ["obs", "var", "uns"]:
+                    attr = getattr(self, field)
+                    if attr is not None:
+                        in_memory = set(attr.keys())
                 keys = list(self._file[field].keys())
+                keys = [(k if k not in in_memory else f'{k}*') for k in keys]
                 s += f"\n{indent}{field}: {keys}"
+        s += f"\nNote: fields marked with * are in-memory objects."
         return s
 
     def __repr__(self) -> str:
