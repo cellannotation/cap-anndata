@@ -451,9 +451,8 @@ def test_layer_base_operations():
 
     # Test add layers
     with read_h5ad(file_path, edit=True) as cap_adata:
-        cap_adata.layers[layer_name_dense] = dense_array
-        cap_adata.layers[layer_name_sparse] = sparse_array
-        cap_adata.overwrite(fields=["layers"])
+        cap_adata.create_layer(name=layer_name_dense, matrix=dense_array)
+        cap_adata.create_layer(name=layer_name_sparse, matrix=sparse_array)
 
     with read_h5ad(file_path) as cap_adata:
         assert np.array_equal(dense_array, cap_adata.layers[layer_name_dense]), "Must be correct dense matrix!"
@@ -461,9 +460,8 @@ def test_layer_base_operations():
 
     # Test remove layers
     with read_h5ad(file_path, edit=True) as cap_adata:
-        cap_adata.layers.pop(layer_name_dense)
-        cap_adata.layers.pop(layer_name_sparse)
-        cap_adata.overwrite(fields=["layers"])
+        cap_adata.remove_layer(layer_name_dense)
+        cap_adata.remove_layer(layer_name_sparse)
 
     with read_h5ad(file_path) as cap_adata:
         assert layer_name_dense not in cap_adata.layers.keys(), "Dense matrix must be removed!"
@@ -473,8 +471,7 @@ def test_layer_base_operations():
     layer_name_edit = "layer_for_edit"
     data = np.ones(shape)
     with read_h5ad(file_path, edit=True) as cap_adata: # fill layer
-        cap_adata.layers[layer_name_edit] = data
-        cap_adata.overwrite(fields=["layers"])
+        cap_adata.create_layer(name=layer_name_edit, matrix=data)
     with read_h5ad(file_path, edit=True) as cap_adata: # modify backed
         cap_adata.layers[layer_name_edit][0:1,0:1] = 0
     with read_h5ad(file_path) as cap_adata: # check is changed
@@ -517,8 +514,6 @@ def test_layer_create_append():
                 matrix=None,
                 matrix_shape=shape,
                 data_dtype=sparse_array.data.dtype,
-                indices_dtype=sparse_array.indices.dtype,
-                indptr_dtype=sparse_array.indptr.dtype,
                 format=format,
             )
     sparse_info = {}

@@ -269,9 +269,6 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 del self._file[f"uns/{key}"]
 
         if "layers" in fields:
-            for key in self.layers.keys_to_add:
-                dest = f"layers/{key}"
-                self._write_elem(dest, self.layers[key], compression=compression)
             for key in self.layers.keys_to_remove:
                 del self._file[f"layers/{key}"]
 
@@ -280,8 +277,6 @@ class CapAnnData(BaseLayerMatrixAndDf):
                      matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
                      matrix_shape: Union[tuple[int, int], None] = None,
                      data_dtype: Union[np.dtype, None] = None,
-                     indices_dtype: Union[np.dtype, None] = None,
-                     indptr_dtype: Union[np.dtype, None] = None,
                      format: Union[str, None] = None,
                      compression: str = "lzf"
                     ) -> None:
@@ -290,7 +285,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
         """
         dest = f"layers/{name}"
         if name in self.layers.keys():
-            raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one!")
+            raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one! Use `remove_layer` method.")
 
         if matrix is not None:
             self._write_elem(dest, matrix, compression=compression)
@@ -313,12 +308,15 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 group.attrs['encoding-version'] = '0.1.0'
                 group.attrs['shape'] = matrix_shape
                 group.create_dataset('data', data=data.data, dtype=data_dtype, maxshape=(None,), chunks=True, compression=compression)
-                group.create_dataset('indices', data=data.indices, dtype=indices_dtype, maxshape=(None,), chunks=True, compression=compression)
-                group.create_dataset('indptr', data=data.indptr, dtype=indptr_dtype, maxshape=(None,), chunks=True, compression=compression)
+                group.create_dataset('indices', data=data.indices, dtype=data.indices.dtype, maxshape=(None,), chunks=True, compression=compression)
+                group.create_dataset('indptr', data=data.indptr, dtype=data.indptr.dtype, maxshape=(None,), chunks=True, compression=compression)
             else:
-                raise NotImplementedError
+                raise NotImplementedError(f"Format must  be 'dense', 'csr' or 'csc' but {format} given!")
 
         self._link_layers()
+
+    def remove_layer(self, name: str):
+        del self._file[f"layers/{name}"]
 
     def read_uns(self, keys: List[str] = None) -> None:
         if keys is None:

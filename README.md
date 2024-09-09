@@ -210,36 +210,32 @@ cap_adata.overwrite(["uns"])  # overwrite the uns secion only
 
 By the default the CapAnnData will not read the layers.
 Links to available layers will be created upon the first call of the `.layers` property.
-Alike the AnnData package the call like `cap_adata.layers["my_layer"]` will not return the in-memory matrix but will return the backed version instead.
+Alike the AnnData package the call like `cap_adata.layers["some_layer"]` will not return the in-memory matrix but will return the backed version instead.
 
-Base operations on layers:
+Base operations with layers:
 ```python
 with read_h5ad(file_path=file_path, edit=True) as cap_adata:
-    # will return available layer names
+    # Will return available layer names
     layer_names = cap_adata.layers.keys()
 
-    # return the matrix in backed mode
-    my_layer = cap_adata.layers["my_layer1"]
+    # Return the matrix in backed mode
+    my_layer = cap_adata.layers["some_layer"]
 
-    # take the whole matrix in memory
+    # Take the whole matrix to memory
     my_layer = my_layer[:]
 
-    # add new layer
-    cap_adata.layers["my_layer2"] = my_layer # could be numpy dense array or csr sparse matrix
+    # Create new layer with array
+    cap_adata.create_layer(
+        name="some_layer",
+        matrix=array, # could be numpy dense array or csr sparse matrix
+        matrix_shape=None,
+        data_dtype=None,
+        format=None,
+    )
 
-    # remove old layer
-    cap_adata.layers.pop("my_layer1")
-
-    # save changes
-    cap_adata.overwrite(["layers"])
-```
-
-Additional operations:
-```python
-with read_h5ad(file_path=file_path, edit=True) as cap_adata:
     # Create empty layer for dense array
     cap_adata.create_layer(
-        name="dense_array",
+        name="empty_dense_array",
         matrix=None,
         matrix_shape=shape,
         data_dtype=dtype,
@@ -247,7 +243,7 @@ with read_h5ad(file_path=file_path, edit=True) as cap_adata:
     )
     # Create empty layer for sparse matrix
     cap_adata.create_layer(
-        name="sparse_matrix",
+        name="empty_sparse_matrix",
         matrix=None,
         matrix_shape=shape,
         data_dtype=dtype,
@@ -255,13 +251,16 @@ with read_h5ad(file_path=file_path, edit=True) as cap_adata:
         indptr_dtype=indptr_type,
         format=format, # 'csr' or 'csc'
     )
-    # Add data
+    # Add data with chunks
     with read_h5ad(file_path, edit=True) as cap_adata:
         # Dense dataset
-        cap_adata.layers["dense_array"][0, 0] = 1
+        cap_adata.layers["empty_dense_array"][0, 0] = 1
         # Sparse datasets
-        sparse_dataset = cap_adata.layers["sparse_matrix"]
+        sparse_dataset = cap_adata.layers["empty_sparse_matrix"]
         sparse_dataset.append(chunk_data) # chunk_data must be 'csr' or 'csc' matrix
+
+    # Remove layer
+    cap_adata.remove_layer("dense_array")
 ```
 
 #### 8. Join and Merge DataFrames
