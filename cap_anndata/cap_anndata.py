@@ -296,7 +296,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             self._write_elem(dest, matrix, compression=compression)
         else:
             if format == "dense":
-                group = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype)
+                group = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype, compression=compression)
                 # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#dense-arrays-specification-v0-2-0
                 group.attrs['encoding-type'] = 'array'
                 group.attrs['encoding-version'] = '0.2.0'
@@ -312,11 +312,9 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 group.attrs['encoding-type'] = f'{format}_matrix'
                 group.attrs['encoding-version'] = '0.1.0'
                 group.attrs['shape'] = matrix_shape
-                group.attrs['h5sparse_format'] = format
-                group.attrs['h5sparse_shape'] = data.shape
-                group.create_dataset('data', data=data.data, dtype=data_dtype, maxshape=(None,), chunks=True)
-                group.create_dataset('indices', data=data.indices, dtype=indices_dtype, maxshape=(None,), chunks=True)
-                group.create_dataset('indptr', data=data.indptr, dtype=indptr_dtype, maxshape=(None,), chunks=True)
+                group.create_dataset('data', data=data.data, dtype=data_dtype, maxshape=(None,), chunks=True, compression=compression)
+                group.create_dataset('indices', data=data.indices, dtype=indices_dtype, maxshape=(None,), chunks=True, compression=compression)
+                group.create_dataset('indptr', data=data.indptr, dtype=indptr_dtype, maxshape=(None,), chunks=True, compression=compression)
             else:
                 raise NotImplementedError
 
@@ -344,7 +342,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     self._layers[entity_name] = entity
                 else:
                     # sparse array
-                    self._layers[entity_name] = ad.experimental.sparse_dataset(entity)
+                    self._layers[entity_name] = sparse_dataset(entity)
         else:
             _ = self._file.create_group('layers')
 
