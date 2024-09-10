@@ -15,8 +15,11 @@ def test_read_anndata_file():
     with read_h5ad(file_path=file_path) as cap_adata:
         assert cap_adata is not None, "CapAnnData file must be valid!"
 
+    cap_adata = read_h5ad(file_path=file_path)
+    assert cap_adata is not None, "CapAnnData file must be valid!"
+
+    # TODO: remove deprecated function
     cap_adata = read_directly(file_path=file_path)
     assert cap_adata is not None, "CapAnnData file must be valid!"
-    cap_adata._file.close()
 
     os.remove(file_path)

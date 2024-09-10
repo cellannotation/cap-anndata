@@ -394,3 +394,11 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def __str__(self) -> str:
         return self.create_repr()
+    
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        if self._file is not None:
+            self._file.close()
+        logger.debug("CapAnnData closed!")
