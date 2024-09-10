@@ -29,6 +29,10 @@ class BaseLayerMatrixAndDf:
         self._X: X_NOTATION = None
 
     @property
+    def file(self) -> h5py.File:
+        return self._file
+
+    @property
     def X(self) -> X_NOTATION:
         if self._X is None:
             self._link_x()
@@ -394,3 +398,11 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def __str__(self) -> str:
         return self.create_repr()
+    
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        if self._file is not None:
+            self._file.close()
+        logger.debug("CapAnnData closed!")
