@@ -29,6 +29,10 @@ class BaseLayerMatrixAndDf:
         self._X: X_NOTATION = None
 
     @property
+    def file(self) -> h5py.File:
+        return self._file
+
+    @property
     def X(self) -> X_NOTATION:
         if self._X is None:
             self._link_x()

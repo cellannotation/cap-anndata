@@ -39,7 +39,7 @@ def test_read_as_function(edit):
     if edit:
         cap_adata.overwrite()
 
-    cap_adata._file.close()  # TODO: create a file property
+    cap_adata.file.close()
     os.remove(file_path)
 
 
@@ -55,5 +55,5 @@ def test_read_directly(edit):
     if edit:
         cap_adata.overwrite()
 
-    cap_adata._file.close()  # TODO: create a file property
+    cap_adata.file.close()
     os.remove(file_path)
