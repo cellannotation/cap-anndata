@@ -16,7 +16,7 @@ from cap_anndata import CapAnnDataDF, CapAnnDataDict
 
 logger = logging.getLogger(__name__)
 
-X_NOTATION = Union[h5py.Dataset, ad.experimental.CSRDataset, ad.experimental.CSCDataset]
+X_NOTATION = Union[h5py.Dataset, ad.experimental.CSRDataset, ad.experimental.CSCDataset, None]
 OBSM_NOTATION = Dict[str, X_NOTATION]
 
 NotLinkedObject: Final = "__NotLinkedObject"
@@ -86,6 +86,9 @@ class BaseLayerMatrixAndDf:
             # read whole df
             df = CapAnnDataDF.from_df(read_elem(h5_group), column_order=column_order)
         else:
+            if isinstance(columns, str):
+                # single column provided instead of list
+                columns = [columns]
             cols_to_read = [c for c in columns if c in column_order]
             df = CapAnnDataDF()
             df.column_order = column_order
@@ -119,6 +122,23 @@ class BaseLayerMatrixAndDf:
                 f"The number of rows in the input DataFrame should be equal to the number of {items} in the "
                 "AnnData object!"
             )
+
+    def _link_array_mapping(self, cap_dict: CapAnnDataDict, key: str) -> None:
+        if key not in self._file.keys():
+            raise KeyError(f"The key {key} doesn't exist in the file! Ignore linking.")
+
+        group = self._file[key]
+        if not isinstance(group, h5py.Group):
+            raise ValueError(f"The object {key} must be a group!")
+
+        for array_name in group.keys():
+            array = group[array_name]
+            if isinstance(array, h5py.Dataset):
+                cap_dict[array_name] = array
+            elif isinstance(array, h5py.Group):
+                cap_dict[array_name] = sparse_dataset(array)
+            else:
+                raise ValueError(f"Can't link array in {key} due to unsupported type of object: {type(array)}")
 
 
 class RawLayer(BaseLayerMatrixAndDf):
@@ -156,6 +176,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
         self._obsm: OBSM_NOTATION = None
         self._layers: CapAnnDataDict = None
         self._uns: CapAnnDataDict = None
+        self._obsp: CapAnnDataDict = None
+        self._varp: CapAnnDataDict = None
         self._raw: RawLayer = None
         self._shape: Tuple[int, int] = None
 
@@ -211,6 +233,18 @@ class CapAnnData(BaseLayerMatrixAndDf):
             self._link_obsm()
         return self._obsm
 
+    @property
+    def obsp(self) -> CapAnnDataDict:
+        if self._obsp is None:
+            self._link_obsp()
+        return self._obsp
+
+    @property
+    def varp(self) -> CapAnnDataDict:
+        if self._varp is None:
+            self._link_varp()
+        return self._varp
+
     def read_obs(self, columns: List[str] = None, reset: bool = False) -> None:
         df = self._read_df("obs", columns=columns)
         if self.obs.empty or reset:
@@ -226,6 +260,60 @@ class CapAnnData(BaseLayerMatrixAndDf):
         else:
             for col in df.columns:
                 self._var[col] = df[col]
+
+    def read_uns(self, keys: List[str] = None) -> None:
+        if keys is None:
+            keys = list(self.uns.keys())
+
+        for key in keys:
+            existing_keys = self.uns.keys()
+            if key in existing_keys:
+                source = self._file[f"uns/{key}"]
+                self.uns[key] = read_elem(source)
+
+    def _link_layers(self) -> None:
+        if self._layers is None:
+            self._layers = CapAnnDataDict()
+        if "layers" in self._file.keys():
+            self._link_array_mapping(cap_dict=self._layers, key="layers")
+
+    def _link_obsm(self) -> None:
+        self._obsm = {}
+        if "obsm" in self._file.keys():
+            obsm_group = self._file["obsm"]
+            for entity_name in obsm_group.keys():
+                entity = obsm_group[entity_name]
+                if isinstance(entity, h5py.Dataset):
+                    # dense array
+                    self._obsm[entity_name] = entity
+                else:
+                    # sparse array
+                    self._obsm[entity_name] = sparse_dataset(entity)
+
+    def _link_obsp(self):
+        key = "obsp"
+        if self._obsp is None:
+            self._obsp = CapAnnDataDict()
+
+        if key in self._file.keys():
+            self._link_array_mapping(cap_dict=self._obsp, key=key)
+
+    def _link_varp(self):
+        key = "varp"
+        if self._varp is None:
+            self._varp = CapAnnDataDict()
+
+        if key in self._file.keys():
+            self._link_array_mapping(cap_dict=self._varp, key=key)
+
+    def obsm_keys(self) -> List[str]:
+        return list(self.obsm.keys())
+
+    def obs_keys(self) -> List[str]:
+        return self.obs.column_order.tolist()
+
+    def var_keys(self) -> List[str]:
+        return self.var.column_order.tolist()
 
     def overwrite(self, fields: List[str] = None, compression: str = "lzf") -> None:
         field_to_entity = {
@@ -293,7 +381,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
             self._file.create_group('layers')
 
         if name in self.layers.keys():
-            raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one! Use `remove_layer` method.")
+            raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one! Use "
+                             f"`remove_layer` method.")
 
         if matrix is not None:
             self._write_elem(dest, matrix, compression=compression)
@@ -325,52 +414,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def remove_layer(self, name: str):
         del self._file[f"layers/{name}"]
-
-    def read_uns(self, keys: List[str] = None) -> None:
-        if keys is None:
-            keys = list(self.uns.keys())
-
-        for key in keys:
-            existing_keys = self.uns.keys()
-            if key in existing_keys:
-                source = self._file[f"uns/{key}"]
-                self.uns[key] = read_elem(source)
-
-    def _link_layers(self) -> None:
-        if self._layers is None:
-            self._layers = CapAnnDataDict()
-        if "layers" in self._file.keys():
-            group = self._file["layers"]
-            for entity_name in group.keys():
-                entity = group[entity_name]
-                if isinstance(entity, h5py.Dataset):
-                    # dense array
-                    self._layers[entity_name] = entity
-                else:
-                    # sparse array
-                    self._layers[entity_name] = sparse_dataset(entity)
-
-    def _link_obsm(self) -> None:
-        self._obsm = {}
-        if "obsm" in self._file.keys():
-            obsm_group = self._file["obsm"]
-            for entity_name in obsm_group.keys():
-                entity = obsm_group[entity_name]
-                if isinstance(entity, h5py.Dataset):
-                    # dense array
-                    self._obsm[entity_name] = entity
-                else:
-                    # sparse array
-                    self._obsm[entity_name] = sparse_dataset(entity)
-
-    def obsm_keys(self) -> List[str]:
-        return list(self.obsm.keys())
-
-    def obs_keys(self) -> List[str]:
-        return self.obs.column_order.tolist()
-
-    def var_keys(self) -> List[str]:
-        return self.var.column_order.tolist()
+        self._link_layers()
 
     def create_repr(self) -> str:
         indent = " " * 4

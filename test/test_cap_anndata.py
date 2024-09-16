@@ -542,3 +542,18 @@ def test_layer_create_append():
             assert matrix.data.dtype == sparse_info[format]["dtype"], "dtype is wrong!"
 
     os.remove(file_path)
+
+
+@pytest.mark.parametrize("shape", [(10, 10), (10, 10, 2)])
+def test_read_obsp_varp(shape):
+    adata = ad.AnnData(X=np.ones((10, 10), dtype=np.float32))
+    adata.obsp["obsp_test"] = np.random.random((10, 10))
+    adata.varp["varp_test"] = np.random.random((10, 10))
+
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_read_obsp_varp.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path) as cap_adata:
+        assert np.allclose(adata.obsp["obsp_test"], cap_adata.obsp["obsp_test"][:])
+        assert np.allclose(adata.varp["varp_test"], cap_adata.varp["varp_test"][:])
