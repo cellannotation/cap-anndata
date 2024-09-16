@@ -544,11 +544,12 @@ def test_layer_create_append():
     os.remove(file_path)
 
 
-@pytest.mark.parametrize("shape", [(10, 10), (10, 10, 2)])
-def test_read_obsp_varp(shape):
-    adata = ad.AnnData(X=np.ones((10, 10), dtype=np.float32))
-    adata.obsp["obsp_test"] = np.random.random((10, 10))
-    adata.varp["varp_test"] = np.random.random((10, 10))
+def test_read_obsp_varp():
+    shape = (10, 10)
+    adata = ad.AnnData(X=np.ones(shape, dtype=np.float32))
+    rng = np.random.default_rng()
+    adata.obsp["obsp_test"] = rng.random(shape)
+    adata.varp["varp_test"] = rng.random(shape)
 
     temp_folder = tempfile.mkdtemp()
     file_path = os.path.join(temp_folder, "test_read_obsp_varp.h5ad")
@@ -557,3 +558,25 @@ def test_read_obsp_varp(shape):
     with read_h5ad(file_path) as cap_adata:
         assert np.allclose(adata.obsp["obsp_test"], cap_adata.obsp["obsp_test"][:])
         assert np.allclose(adata.varp["varp_test"], cap_adata.varp["varp_test"][:])
+
+
+# def test_modify_obsp_varp():
+#     shape = (10, 10)
+#     adata = ad.AnnData(X=np.ones(shape, dtype=np.float32))
+#     rng = np.random.default_rng()
+#     adata.obsp["obsp_test"] = rng.random(shape)
+#     adata.varp["varp_test"] = rng.random(shape)
+#
+#     temp_folder = tempfile.mkdtemp()
+#     file_path = os.path.join(temp_folder, "test_read_obsp_varp.h5ad")
+#     adata.write_h5ad(file_path)
+#
+#     with read_h5ad(file_path, edit=True) as cap_adata:
+#         cap_adata.obsp["obsp_test"][:shape[0]//2] = 0
+#         cap_adata.varp["varp_test"][:shape[0]//2] = 0
+#
+#     with read_h5ad(file_path, edit=False):
+#         s1 = np.s_[:shape[0] // 2]
+#         s2 = np.s_[shape[0] // 2:]
+#         assert np.allclose(adata.obsp["obsp_test"][s2], cap_adata.obsp["obsp_test"][s2])
+#         # assert np.allclose(new_matrix, cap_adata.varp["varp_test"][:])
