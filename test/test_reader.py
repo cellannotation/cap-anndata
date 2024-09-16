@@ -4,6 +4,7 @@ import os
 from cap_anndata.reader import read_h5ad, read_directly
 from test.context import get_base_anndata
 import pytest
+import warnings
 
 
 def prepare_h5ad_file(name):
@@ -48,7 +49,10 @@ def test_read_directly(edit):
     # TODO: remove deprecated function and unit test
     file_path = prepare_h5ad_file("test_read_directly.h5ad")
 
-    cap_adata = read_directly(file_path=file_path, edit=edit)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        cap_adata = read_directly(file_path=file_path, edit=edit)
+
     assert cap_adata is not None, "CapAnnData file must be valid!"
     cap_adata.read_obs()
     cap_adata.read_uns()
