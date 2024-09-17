@@ -399,14 +399,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     matrix_shape = (0, 0)
                 sparse_class = ss.csr_matrix if format == "csr" else ss.csc_matrix
                 data = sparse_class(matrix_shape, dtype=data_dtype)
-                group = self._file.create_group(dest)
-                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#sparse-arrays
-                group.attrs['encoding-type'] = f'{format}_matrix'
-                group.attrs['encoding-version'] = '0.1.0'
-                group.attrs['shape'] = matrix_shape
-                group.create_dataset('data', data=data.data, dtype=data_dtype, maxshape=(None,), chunks=True, compression=compression)
-                group.create_dataset('indices', data=data.indices, dtype=data.indices.dtype, maxshape=(None,), chunks=True, compression=compression)
-                group.create_dataset('indptr', data=data.indptr, dtype=data.indptr.dtype, maxshape=(None,), chunks=True, compression=compression)
+                self._write_elem(dest, data, compression=compression)
             else:
                 raise NotImplementedError(f"Format must  be 'dense', 'csr' or 'csc' but {format} given!")
 
