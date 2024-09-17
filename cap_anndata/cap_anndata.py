@@ -351,6 +351,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
             "raw.var": self.raw.var if self.raw is not None else None,
             "uns": self.uns,
             "layers": self.layers,
+            "obsp": self.obsp,
+            "varp": self.varp,
         }
 
         if fields is None:
@@ -389,9 +391,10 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.uns.keys_to_remove:
                 del self._file[f"uns/{key}"]
 
-        if "layers" in fields:
-            for key in self.layers.keys_to_remove:
-                del self._file[f"layers/{key}"]
+        for field in ["layers", "obsp", "varp"]:
+            if field in fields:
+                for key in field_to_entity[field].keys_to_remove:
+                    del self._file[f"{field}/{key}"]
 
     def create_layer(self,
                      name: str,

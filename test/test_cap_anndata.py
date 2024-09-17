@@ -560,26 +560,55 @@ def test_read_obsp_varp():
         assert np.allclose(adata.varp["varp_test"], cap_adata.varp["varp_test"][:])
 
 
-def test_modify_obsp_varp():
+@pytest.mark.parametrize("field", ["obsp", "varp"])
+def test_modify_obsp_varp(field):
     shape = (10, 10, 2)
     adata = ad.AnnData(X=np.ones(shape[:2], dtype=np.float32))
     rng = np.random.default_rng()
-    adata.obsp["obsp_test"] = rng.random(shape)
-    adata.varp["varp_test"] = rng.random(shape)
-
+    name = f"{field}_test"
+    getattr(adata, field)[name] = rng.random(shape)
+    ada_p = getattr(adata, field)[name]
     temp_folder = tempfile.mkdtemp()
-    file_path = os.path.join(temp_folder, "test_read_obsp_varp.h5ad")
+    file_path = os.path.join(temp_folder, f"test_modify_{field}.h5ad")
     adata.write_h5ad(file_path)
 
     s1 = np.s_[:shape[0] // 2]
     s2 = np.s_[shape[0] // 2:]
 
     with read_h5ad(file_path, edit=True) as cap_adata:
-        cap_adata.obsp["obsp_test"].write_direct(np.zeros_like(adata.obsp["obsp_test"]), s1, s1)
-        cap_adata.varp["varp_test"][:shape[0]//2] = 0
+        f = getattr(cap_adata, field)[name]
+        f.write_direct(np.zeros_like(ada_p), s1, s1)
 
     with read_h5ad(file_path, edit=False) as cap_adata:
-        assert (cap_adata.obsp["obsp_test"][s1] == 0).all()
-        assert np.allclose(adata.obsp["obsp_test"][s2], cap_adata.obsp["obsp_test"][s2])
-        assert (cap_adata.varp["varp_test"][s1] == 0).all()
-        assert np.allclose(adata.varp["varp_test"][s2], cap_adata.varp["varp_test"][s2])
+        cap_p = getattr(cap_adata, field)[name]
+        assert (cap_p[s1] == 0).all()
+        assert np.allclose(ada_p[s2], cap_p[s2])
+
+    # test add new obsp/varp
+    new_matrix = rng.random(shape)
+    new_name = f"{field}_new"
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        f = getattr(cap_adata, f"create_{field}")
+        f(new_name, matrix=new_matrix)
+        assert new_name in getattr(cap_adata, field).keys()
+
+    with read_h5ad(file_path, edit=False) as cap_adata:
+        assert np.allclose(new_matrix, getattr(cap_adata, field)[new_name][:])
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        # test directly remove via dedicated method
+        f = getattr(cap_adata, f"remove_{field}")
+        f(new_name)
+        assert new_name not in cap_adata.obsp.keys()
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        # test removing via pop
+        f = getattr(cap_adata, field)
+        f.pop(name)
+        cap_adata.overwrite([field])
+
+    with read_h5ad(file_path, edit=False) as cap_adata:
+        # test that field is removed
+        assert new_name not in getattr(cap_adata, field).keys()
+        assert name not in getattr(cap_adata, field).keys()
+        assert len(getattr(cap_adata, field).keys()) == 0
