@@ -560,23 +560,26 @@ def test_read_obsp_varp():
         assert np.allclose(adata.varp["varp_test"], cap_adata.varp["varp_test"][:])
 
 
-# def test_modify_obsp_varp():
-#     shape = (10, 10)
-#     adata = ad.AnnData(X=np.ones(shape, dtype=np.float32))
-#     rng = np.random.default_rng()
-#     adata.obsp["obsp_test"] = rng.random(shape)
-#     adata.varp["varp_test"] = rng.random(shape)
-#
-#     temp_folder = tempfile.mkdtemp()
-#     file_path = os.path.join(temp_folder, "test_read_obsp_varp.h5ad")
-#     adata.write_h5ad(file_path)
-#
-#     with read_h5ad(file_path, edit=True) as cap_adata:
-#         cap_adata.obsp["obsp_test"][:shape[0]//2] = 0
-#         cap_adata.varp["varp_test"][:shape[0]//2] = 0
-#
-#     with read_h5ad(file_path, edit=False):
-#         s1 = np.s_[:shape[0] // 2]
-#         s2 = np.s_[shape[0] // 2:]
-#         assert np.allclose(adata.obsp["obsp_test"][s2], cap_adata.obsp["obsp_test"][s2])
-#         # assert np.allclose(new_matrix, cap_adata.varp["varp_test"][:])
+def test_modify_obsp_varp():
+    shape = (10, 10)
+    adata = ad.AnnData(X=np.ones(shape, dtype=np.float32))
+    rng = np.random.default_rng()
+    adata.obsp["obsp_test"] = rng.random(shape)
+    adata.varp["varp_test"] = rng.random(shape)
+
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_read_obsp_varp.h5ad")
+    adata.write_h5ad(file_path)
+
+    s1 = np.s_[:shape[0] // 2]
+    s2 = np.s_[shape[0] // 2:]
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.obsp["obsp_test"].write_direct(np.zeros_like(adata.obsp["obsp_test"]), s1, s1)
+        cap_adata.varp["varp_test"][:shape[0]//2] = 0
+
+    with read_h5ad(file_path, edit=False) as cap_adata:
+        assert (cap_adata.obsp["obsp_test"][s1] == 0).all()
+        assert np.allclose(adata.obsp["obsp_test"][s2], cap_adata.obsp["obsp_test"][s2])
+        assert (cap_adata.varp["varp_test"][s1] == 0).all()
+        assert np.allclose(adata.varp["varp_test"][s2], cap_adata.varp["varp_test"][s2])
