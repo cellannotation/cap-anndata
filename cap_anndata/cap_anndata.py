@@ -13,7 +13,6 @@ else:
 
 from cap_anndata import CapAnnDataDF, CapAnnDataDict
 
-
 logger = logging.getLogger(__name__)
 
 X_NOTATION = Union[h5py.Dataset, ad.experimental.CSRDataset, ad.experimental.CSCDataset, None]
@@ -139,6 +138,36 @@ class BaseLayerMatrixAndDf:
                 cap_dict[array_name] = sparse_dataset(array)
             else:
                 raise ValueError(f"Can't link array in {key} due to unsupported type of object: {type(array)}")
+
+    def _create_new_matrix(
+            self,
+            dest: str,
+            matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+            matrix_shape: Union[tuple[int, int], None] = None,
+            data_dtype: Union[np.dtype, None] = None,
+            format: Union[str, None] = None,
+            compression: str = "lzf"
+    ) -> None:
+        if matrix is not None:
+            self._write_elem(dest, matrix, compression=compression)
+        else:
+            if format == "dense":
+                group = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype,
+                                                  compression=compression)
+                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#dense-arrays-specification-v0-2-0
+                group.attrs['encoding-type'] = 'array'
+                group.attrs['encoding-version'] = '0.2.0'
+            elif format in ["csr",
+                            "csc"]:  # Based on https://github.com/appier/h5sparse/blob/master/h5sparse/h5sparse.py
+                if data_dtype is None:
+                    data_dtype = np.float64
+                if matrix_shape is None:
+                    matrix_shape = (0, 0)
+                sparse_class = ss.csr_matrix if format == "csr" else ss.csc_matrix
+                data = sparse_class(matrix_shape, dtype=data_dtype)
+                self._write_elem(dest, data, compression=compression)
+            else:
+                raise NotImplementedError(f"Format must  be 'dense', 'csr' or 'csc' but {format} given!")
 
 
 class RawLayer(BaseLayerMatrixAndDf):
@@ -347,7 +376,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
                 column_order = entity.column_order
                 if (
-                    column_order.size == 0
+                        column_order.size == 0
                 ):  # Refs https://github.com/cellannotation/cap-anndata/issues/6
                     column_order = np.array([], dtype=np.float64)
                 self._file[key].attrs["column-order"] = column_order
@@ -371,7 +400,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
                      data_dtype: Union[np.dtype, None] = None,
                      format: Union[str, None] = None,
                      compression: str = "lzf"
-                    ) -> None:
+                     ) -> None:
         """
         The empty layer will be created in the case of `matrix` is None.
         """
@@ -384,30 +413,55 @@ class CapAnnData(BaseLayerMatrixAndDf):
             raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one! Use "
                              f"`remove_layer` method.")
 
-        if matrix is not None:
-            self._write_elem(dest, matrix, compression=compression)
-        else:
-            if format == "dense":
-                group = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype, compression=compression)
-                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#dense-arrays-specification-v0-2-0
-                group.attrs['encoding-type'] = 'array'
-                group.attrs['encoding-version'] = '0.2.0'
-            elif format in ["csr", "csc"]: # Based on https://github.com/appier/h5sparse/blob/master/h5sparse/h5sparse.py
-                if data_dtype is None:
-                    data_dtype = np.float64
-                if matrix_shape is None:
-                    matrix_shape = (0, 0)
-                sparse_class = ss.csr_matrix if format == "csr" else ss.csc_matrix
-                data = sparse_class(matrix_shape, dtype=data_dtype)
-                self._write_elem(dest, data, compression=compression)
-            else:
-                raise NotImplementedError(f"Format must  be 'dense', 'csr' or 'csc' but {format} given!")
-
+        self._create_new_matrix(dest=dest, matrix=matrix, matrix_shape=matrix_shape, data_dtype=data_dtype,
+                                format=format, compression=compression)
         self._link_layers()
 
-    def remove_layer(self, name: str):
+    def create_obsp(self,
+                    name: str,
+                    matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+                    matrix_shape: Union[tuple[int, int], None] = None,
+                    data_dtype: Union[np.dtype, None] = None,
+                    format: Union[str, None] = None,
+                    compression: str = "lzf"
+                    ) -> None:
+        dest = f"obsp/{name}"
+        if name in self.obsp.keys():
+            raise ValueError(f"Please explicitly remove the existing obsp '{name}' before creating a new one!")
+        if "obsp" not in self._file.keys():
+            self._file.create_group('obsp')
+        self._create_new_matrix(dest=dest, matrix=matrix, matrix_shape=matrix_shape, data_dtype=data_dtype,
+                                format=format, compression=compression)
+        self._link_obsp()
+
+    def create_varp(self,
+                    name: str,
+                    matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+                    matrix_shape: Union[tuple[int, int], None] = None,
+                    data_dtype: Union[np.dtype, None] = None,
+                    format: Union[str, None] = None,
+                    compression: str = "lzf"
+                    ) -> None:
+        dest = f"varp/{name}"
+        if name in self.varp.keys():
+            raise ValueError(f"Please explicitly remove the existing varp '{name}' before creating a new one!")
+        if "varp" not in self._file.keys():
+            self._file.create_group('varp')
+        self._create_new_matrix(dest=dest, matrix=matrix, matrix_shape=matrix_shape, data_dtype=data_dtype,
+                                format=format, compression=compression)
+        self._link_varp()
+
+    def remove_layer(self, name: str) -> None:
         del self._file[f"layers/{name}"]
         self._link_layers()
+
+    def remove_obsp(self, name: str) -> None:
+        del self._file[f"obsp/{name}"]
+        self._link_obsp()
+
+    def remove_varp(self, name: str) -> None:
+        del self._file[f"varp/{name}"]
+        self._link_varp()
 
     def create_repr(self) -> str:
         indent = " " * 4
@@ -435,7 +489,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def __str__(self) -> str:
         return self.create_repr()
-    
+
     def __enter__(self):
         return self
 
