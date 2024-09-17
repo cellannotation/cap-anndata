@@ -545,8 +545,8 @@ def test_layer_create_append():
 
 
 def test_read_obsp_varp():
-    shape = (10, 10)
-    adata = ad.AnnData(X=np.ones(shape, dtype=np.float32))
+    shape = (10, 10, 2)
+    adata = ad.AnnData(X=np.ones(shape[:2], dtype=np.float32))
     rng = np.random.default_rng()
     adata.obsp["obsp_test"] = rng.random(shape)
     adata.varp["varp_test"] = rng.random(shape)
@@ -561,8 +561,8 @@ def test_read_obsp_varp():
 
 
 def test_modify_obsp_varp():
-    shape = (10, 10)
-    adata = ad.AnnData(X=np.ones(shape, dtype=np.float32))
+    shape = (10, 10, 2)
+    adata = ad.AnnData(X=np.ones(shape[:2], dtype=np.float32))
     rng = np.random.default_rng()
     adata.obsp["obsp_test"] = rng.random(shape)
     adata.varp["varp_test"] = rng.random(shape)
