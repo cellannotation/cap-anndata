@@ -361,6 +361,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             "uns": self.uns,
             "layers": self.layers,
             "obsm": self.obsm,
+            "varm": self.varm,
             "obsp": self.obsp,
             "varp": self.varp,
         }

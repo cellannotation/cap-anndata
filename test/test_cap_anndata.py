@@ -233,6 +233,58 @@ def test_read_obsm_varm():
     os.remove(file_path)
 
 
+def test_create_remove_obsm():
+    shape = (10, 10)
+    file_path = save_filled_anndata("test_create_remove_obsm.h5ad", n_rows=shape[0], n_genes=shape[1])
+    emb_name = "X_test"
+    emb = np.random.random(size=(shape[0], 2))
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.create_obsm(name=emb_name, matrix=emb)
+        cap_adata.create_obsm(name=emb_name+"_pop", matrix=emb)
+
+    with read_h5ad(file_path) as cap_adata:
+        assert emb_name in cap_adata.obsm.keys()
+        assert np.allclose(emb, cap_adata.obsm[emb_name][:])
+        assert emb_name+"_pop" in cap_adata.obsm.keys()
+        assert np.allclose(emb, cap_adata.obsm[emb_name+"_pop"][:])
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.remove_obsm(emb_name)
+        cap_adata.obsm.pop(emb_name + "_pop")
+        cap_adata.overwrite(["obsm"])
+
+    with read_h5ad(file_path) as cap_adata:
+        assert emb_name not in cap_adata.obsm.keys()
+        assert emb_name+"_pop" not in cap_adata.obsm.keys()
+
+
+def test_create_remove_varm():
+    shape = (10, 10)
+    file_path = save_filled_anndata("test_create_varm.h5ad", n_rows=shape[0], n_genes=shape[1])
+    emb_name = "X_test"
+    emb = np.random.random(size=(shape[1], 2))
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.create_varm(name=emb_name, matrix=emb)
+        cap_adata.create_varm(name=emb_name+"_pop", matrix=emb)
+
+    with read_h5ad(file_path) as cap_adata:
+        assert emb_name in cap_adata.varm.keys()
+        assert np.allclose(emb, cap_adata.varm[emb_name][:])
+        assert emb_name+"_pop" in cap_adata.varm.keys()
+        assert np.allclose(emb, cap_adata.varm[emb_name+"_pop"][:])
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.remove_varm(emb_name)
+        cap_adata.varm.pop(emb_name + "_pop")
+        cap_adata.overwrite(["varm"])
+
+    with read_h5ad(file_path) as cap_adata:
+        assert emb_name not in cap_adata.varm.keys()
+        assert emb_name+"_pop" not in cap_adata.varm.keys()
+
+
 def test_read_uns():
     adata = get_base_anndata()
     key1, key2 = "key1", "key2"
