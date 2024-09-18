@@ -209,28 +209,28 @@ def test_shape(sparse):
         assert sh == (n_rows, n_genes)
 
 
-def test_read_obsm():
+def test_read_obsm_varm():
     adata = get_filled_anndata()
-    obsm_names = [f"X_test{i}" for i in range(2)]
+    emb_names = [f"X_test{i}" for i in range(2)]
 
-    for emb in obsm_names:
+    for emb in emb_names:
         adata.obsm[emb] = np.random.random(size=(adata.shape[0], 2))
+        adata.varm[emb] = np.random.random(size=(adata.shape[1], 2))
 
     temp_folder = tempfile.mkdtemp()
     file_path = os.path.join(temp_folder, "test_read_obsm.h5ad")
     adata.write_h5ad(file_path)
 
     with read_h5ad(file_path) as cap_adata:
-        for emb in obsm_names:
+        for emb in emb_names:
             assert emb in cap_adata.obsm_keys()
             assert cap_adata.obsm[emb].shape == adata.obsm[emb].shape
-
-        x_1 = cap_adata.obsm[obsm_names[0]][:]
-        x_2 = cap_adata.obsm[obsm_names[1]][:]
+            assert emb in cap_adata.varm.keys()
+            assert cap_adata.varm[emb].shape == adata.varm[emb].shape
+            assert np.allclose(adata.obsm[emb], cap_adata.obsm[emb][:])
+            assert np.allclose(adata.varm[emb], cap_adata.varm[emb][:])
 
     os.remove(file_path)
-    assert np.allclose(adata.obsm[obsm_names[0]], x_1)
-    assert np.allclose(adata.obsm[obsm_names[1]], x_2)
 
 
 def test_read_uns():
@@ -558,6 +558,7 @@ def test_read_obsp_varp():
     with read_h5ad(file_path) as cap_adata:
         assert np.allclose(adata.obsp["obsp_test"], cap_adata.obsp["obsp_test"][:])
         assert np.allclose(adata.varp["varp_test"], cap_adata.varp["varp_test"][:])
+    os.remove(file_path)
 
 
 @pytest.mark.parametrize("field", ["obsp", "varp"])
@@ -612,3 +613,5 @@ def test_modify_obsp_varp(field):
         assert new_name not in getattr(cap_adata, field).keys()
         assert name not in getattr(cap_adata, field).keys()
         assert len(getattr(cap_adata, field).keys()) == 0
+
+    os.remove(file_path)

@@ -2,7 +2,7 @@ import logging
 import anndata as ad
 import numpy as np
 import h5py
-from typing import List, Union, Dict, Tuple, Final
+from typing import List, Union, Any, Tuple, Final
 import scipy.sparse as ss
 from packaging import version
 
@@ -16,7 +16,7 @@ from cap_anndata import CapAnnDataDF, CapAnnDataDict
 logger = logging.getLogger(__name__)
 
 X_NOTATION = Union[h5py.Dataset, ad.experimental.CSRDataset, ad.experimental.CSCDataset, None]
-OBSM_NOTATION = Dict[str, X_NOTATION]
+ARRAY_MAPPING_NOTATION = CapAnnDataDict[str, X_NOTATION]
 
 NotLinkedObject: Final = "__NotLinkedObject"
 
@@ -203,7 +203,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
         self._obs: CapAnnDataDF = None
         self._var: CapAnnDataDF = None
         self._X: X_NOTATION = None
-        self._obsm: OBSM_NOTATION = None
+        self._obsm: CapAnnDataDict = None
+        self._varm: CapAnnDataDict = None
         self._layers: CapAnnDataDict = None
         self._uns: CapAnnDataDict = None
         self._obsp: CapAnnDataDict = None
@@ -244,7 +245,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
         return self._raw
 
     @property
-    def uns(self) -> CapAnnDataDict:
+    def uns(self) -> CapAnnDataDict[str, Any]:
         if self._uns is None:
             self._uns = CapAnnDataDict(
                 {k: NotLinkedObject for k in self._file["uns"].keys()}
@@ -252,25 +253,31 @@ class CapAnnData(BaseLayerMatrixAndDf):
         return self._uns
 
     @property
-    def layers(self) -> CapAnnDataDict:
+    def layers(self) -> CapAnnDataDict[str, X_NOTATION]:
         if self._layers is None:
             self._link_layers()
         return self._layers
 
     @property
-    def obsm(self) -> OBSM_NOTATION:
+    def obsm(self) -> CapAnnDataDict[str, X_NOTATION]:
         if self._obsm is None:
             self._link_obsm()
         return self._obsm
 
     @property
-    def obsp(self) -> CapAnnDataDict:
+    def varm(self) -> CapAnnDataDict[str, X_NOTATION]:
+        if self._varm is None:
+            self._link_varm()
+        return self._varm
+
+    @property
+    def obsp(self) -> CapAnnDataDict[str, X_NOTATION]:
         if self._obsp is None:
             self._link_obsp()
         return self._obsp
 
     @property
-    def varp(self) -> CapAnnDataDict:
+    def varp(self) -> CapAnnDataDict[str, X_NOTATION]:
         if self._varp is None:
             self._link_varp()
         return self._varp
@@ -308,17 +315,18 @@ class CapAnnData(BaseLayerMatrixAndDf):
             self._link_array_mapping(cap_dict=self._layers, key="layers")
 
     def _link_obsm(self) -> None:
-        self._obsm = {}
-        if "obsm" in self._file.keys():
-            obsm_group = self._file["obsm"]
-            for entity_name in obsm_group.keys():
-                entity = obsm_group[entity_name]
-                if isinstance(entity, h5py.Dataset):
-                    # dense array
-                    self._obsm[entity_name] = entity
-                else:
-                    # sparse array
-                    self._obsm[entity_name] = sparse_dataset(entity)
+        key = 'obsm'
+        if self._obsm is None:
+            self._obsm = CapAnnDataDict()
+        if key in self._file.keys():
+            self._link_array_mapping(cap_dict=self._obsm, key=key)
+
+    def _link_varm(self) -> None:
+        key = 'varm'
+        if self._varm is None:
+            self._varm = CapAnnDataDict()
+        if key in self._file.keys():
+            self._link_array_mapping(cap_dict=self._varm, key=key)
 
     def _link_obsp(self):
         key = "obsp"
@@ -352,6 +360,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             "raw.var": self.raw.var if self.raw is not None else None,
             "uns": self.uns,
             "layers": self.layers,
+            "obsm": self.obsm,
             "obsp": self.obsp,
             "varp": self.varp,
         }
@@ -392,7 +401,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.uns.keys_to_remove:
                 del self._file[f"uns/{key}"]
 
-        for field in ["layers", "obsp", "varp"]:
+        for field in ["layers", "obsm", "varm", "obsp", "varp"]:
             if field in fields:
                 for key in field_to_entity[field].keys_to_remove:
                     del self._file[f"{field}/{key}"]
@@ -408,18 +417,33 @@ class CapAnnData(BaseLayerMatrixAndDf):
         """
         The empty layer will be created in the case of `matrix` is None.
         """
-        dest = f"layers/{name}"
-
-        if "layers" not in self._file.keys():
-            self._file.create_group('layers')
-
-        if name in self.layers.keys():
-            raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one! Use "
-                             f"`remove_layer` method.")
-
-        self._create_new_matrix(dest=dest, matrix=matrix, matrix_shape=matrix_shape, data_dtype=data_dtype,
-                                format=format, compression=compression)
+        self._create_new_matrix_in_field(field="layers", name=name, matrix=matrix, matrix_shape=matrix_shape,
+                                         data_dtype=data_dtype, format=format, compression=compression)
         self._link_layers()
+
+    def create_obsm(self,
+                    name: str,
+                    matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+                    matrix_shape: Union[tuple[int, int], None] = None,
+                    data_dtype: Union[np.dtype, None] = None,
+                    format: Union[str, None] = None,
+                    compression: str = "lzf"
+                    ) -> None:
+        self._create_new_matrix_in_field(field="obsm", name=name, matrix=matrix, matrix_shape=matrix_shape,
+                                         data_dtype=data_dtype, format=format, compression=compression)
+        self._link_obsm()
+
+    def create_varm(self,
+                    name: str,
+                    matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+                    matrix_shape: Union[tuple[int, int], None] = None,
+                    data_dtype: Union[np.dtype, None] = None,
+                    format: Union[str, None] = None,
+                    compression: str = "lzf"
+                    ) -> None:
+        self._create_new_matrix_in_field(field="varm", name=name, matrix=matrix, matrix_shape=matrix_shape,
+                                         data_dtype=data_dtype, format=format, compression=compression)
+        self._link_varm()
 
     def create_obsp(self,
                     name: str,
@@ -429,13 +453,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     format: Union[str, None] = None,
                     compression: str = "lzf"
                     ) -> None:
-        dest = f"obsp/{name}"
-        if name in self.obsp.keys():
-            raise ValueError(f"Please explicitly remove the existing obsp '{name}' before creating a new one!")
-        if "obsp" not in self._file.keys():
-            self._file.create_group('obsp')
-        self._create_new_matrix(dest=dest, matrix=matrix, matrix_shape=matrix_shape, data_dtype=data_dtype,
-                                format=format, compression=compression)
+        self._create_new_matrix_in_field(field="obsp", name=name, matrix=matrix, matrix_shape=matrix_shape,
+                                         data_dtype=data_dtype, format=format, compression=compression)
         self._link_obsp()
 
     def create_varp(self,
@@ -446,14 +465,21 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     format: Union[str, None] = None,
                     compression: str = "lzf"
                     ) -> None:
-        dest = f"varp/{name}"
-        if name in self.varp.keys():
-            raise ValueError(f"Please explicitly remove the existing varp '{name}' before creating a new one!")
-        if "varp" not in self._file.keys():
-            self._file.create_group('varp')
-        self._create_new_matrix(dest=dest, matrix=matrix, matrix_shape=matrix_shape, data_dtype=data_dtype,
-                                format=format, compression=compression)
+
+        self._create_new_matrix_in_field(field="varp", name=name, matrix=matrix, matrix_shape=matrix_shape,
+                                         data_dtype=data_dtype, format=format, compression=compression)
         self._link_varp()
+
+    def _create_new_matrix_in_field(self, field, name, **kwargs):
+        """**kwargs: matrix, matrix_shape, data_dtype, format, compression"""
+        dest = f"{field}/{name}"
+        field_entity = getattr(self, field)
+        if name in field_entity.keys():
+            raise ValueError(f"Please explicitly remove the existing '{name}' entity from {field} "
+                             f"before creating a new one!")
+        if field not in self._file.keys():
+            self._file.create_group(field)
+        self._create_new_matrix(dest=dest, **kwargs)
 
     def remove_layer(self, name: str) -> None:
         del self._file[f"layers/{name}"]
@@ -466,6 +492,14 @@ class CapAnnData(BaseLayerMatrixAndDf):
     def remove_varp(self, name: str) -> None:
         del self._file[f"varp/{name}"]
         self._link_varp()
+
+    def remove_obsm(self, name: str) -> None:
+        del self._file[f"obsm/{name}"]
+        self._link_obsm()
+
+    def remove_varm(self, name: str) -> None:
+        del self._file[f"varm/{name}"]
+        self._link_varm()
 
     def create_repr(self) -> str:
         indent = " " * 4
