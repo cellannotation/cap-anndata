@@ -123,6 +123,7 @@ class BaseLayerMatrixAndDf:
             )
 
     def _link_array_mapping(self, cap_dict: CapAnnDataDict, key: str) -> None:
+        """Method to update given cap_dict with backed array entities from the file. """
         if key not in self._file.keys():
             raise KeyError(f"The key {key} doesn't exist in the file! Ignore linking.")
 
@@ -145,7 +146,7 @@ class BaseLayerMatrixAndDf:
             matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
             matrix_shape: Union[tuple[int, int], None] = None,
             data_dtype: Union[np.dtype, None] = None,
-            format: Union[str, None] = None,
+            format: Union[str, None] = None,  # TODO: use Enum instead of str
             compression: str = "lzf"
     ) -> None:
         if matrix is not None:
