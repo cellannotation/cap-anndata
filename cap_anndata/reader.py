@@ -23,24 +23,32 @@ def read_h5ad(file_path: str, edit: bool = False):
         return cap_adata
 
     except Exception as error:
-        logger.error(f"Error during read anndata file at path: {file_path}, error = {error}!")
+        logger.error(
+            f"Error during read anndata file at path: {file_path}, error = {error}!"
+        )
         raise error
 
 
 def deprecated(message):
-  def deprecated_decorator(func):
-      def deprecated_func(*args, **kwargs):
-          warnings.warn("{} is a deprecated function. {}".format(func.__name__, message),
-                        category=DeprecationWarning,
-                        stacklevel=2)
-          warnings.simplefilter('default', DeprecationWarning)
-          return func(*args, **kwargs)
-      return deprecated_func
-  return deprecated_decorator
+    def deprecated_decorator(func):
+        def deprecated_func(*args, **kwargs):
+            warnings.warn(
+                "{} is a deprecated function. {}".format(func.__name__, message),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            warnings.simplefilter("default", DeprecationWarning)
+            return func(*args, **kwargs)
+
+        return deprecated_func
+
+    return deprecated_decorator
 
 
 # TODO: remove deprecated function
-@deprecated("It will be removed in the next version of package. Please replace it with `read_h5ad`.")
+@deprecated(
+    "It will be removed in the next version of package. Please replace it with `read_h5ad`."
+)
 def read_directly(file_path: str, edit: bool = False) -> CapAnnData:
     """
     Must be used only in specific cases.
