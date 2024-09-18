@@ -209,28 +209,84 @@ def test_shape(sparse):
         assert sh == (n_rows, n_genes)
 
 
-def test_read_obsm():
+def test_read_obsm_varm():
     adata = get_filled_anndata()
-    obsm_names = [f"X_test{i}" for i in range(2)]
+    emb_names = [f"X_test{i}" for i in range(2)]
 
-    for emb in obsm_names:
+    for emb in emb_names:
         adata.obsm[emb] = np.random.random(size=(adata.shape[0], 2))
+        adata.varm[emb] = np.random.random(size=(adata.shape[1], 2))
 
     temp_folder = tempfile.mkdtemp()
     file_path = os.path.join(temp_folder, "test_read_obsm.h5ad")
     adata.write_h5ad(file_path)
 
     with read_h5ad(file_path) as cap_adata:
-        for emb in obsm_names:
+        for emb in emb_names:
             assert emb in cap_adata.obsm_keys()
             assert cap_adata.obsm[emb].shape == adata.obsm[emb].shape
-
-        x_1 = cap_adata.obsm[obsm_names[0]][:]
-        x_2 = cap_adata.obsm[obsm_names[1]][:]
+            assert emb in cap_adata.varm.keys()
+            assert cap_adata.varm[emb].shape == adata.varm[emb].shape
+            assert np.allclose(adata.obsm[emb], cap_adata.obsm[emb][:])
+            assert np.allclose(adata.varm[emb], cap_adata.varm[emb][:])
 
     os.remove(file_path)
-    assert np.allclose(adata.obsm[obsm_names[0]], x_1)
-    assert np.allclose(adata.obsm[obsm_names[1]], x_2)
+
+
+def test_create_remove_obsm():
+    shape = (10, 10)
+    file_path = save_filled_anndata(
+        "test_create_remove_obsm.h5ad", n_rows=shape[0], n_genes=shape[1]
+    )
+    emb_name = "X_test"
+    emb = np.random.random(size=(shape[0], 2))
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.create_obsm(name=emb_name, matrix=emb)
+        cap_adata.create_obsm(name=emb_name + "_pop", matrix=emb)
+
+    with read_h5ad(file_path) as cap_adata:
+        assert emb_name in cap_adata.obsm.keys()
+        assert np.allclose(emb, cap_adata.obsm[emb_name][:])
+        assert emb_name + "_pop" in cap_adata.obsm.keys()
+        assert np.allclose(emb, cap_adata.obsm[emb_name + "_pop"][:])
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.remove_obsm(emb_name)
+        cap_adata.obsm.pop(emb_name + "_pop")
+        cap_adata.overwrite(["obsm"])
+
+    with read_h5ad(file_path) as cap_adata:
+        assert emb_name not in cap_adata.obsm.keys()
+        assert emb_name + "_pop" not in cap_adata.obsm.keys()
+
+
+def test_create_remove_varm():
+    shape = (10, 10)
+    file_path = save_filled_anndata(
+        "test_create_varm.h5ad", n_rows=shape[0], n_genes=shape[1]
+    )
+    emb_name = "X_test"
+    emb = np.random.random(size=(shape[1], 2))
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.create_varm(name=emb_name, matrix=emb)
+        cap_adata.create_varm(name=emb_name + "_pop", matrix=emb)
+
+    with read_h5ad(file_path) as cap_adata:
+        assert emb_name in cap_adata.varm.keys()
+        assert np.allclose(emb, cap_adata.varm[emb_name][:])
+        assert emb_name + "_pop" in cap_adata.varm.keys()
+        assert np.allclose(emb, cap_adata.varm[emb_name + "_pop"][:])
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.remove_varm(emb_name)
+        cap_adata.varm.pop(emb_name + "_pop")
+        cap_adata.overwrite(["varm"])
+
+    with read_h5ad(file_path) as cap_adata:
+        assert emb_name not in cap_adata.varm.keys()
+        assert emb_name + "_pop" not in cap_adata.varm.keys()
 
 
 def test_read_uns():
@@ -444,7 +500,7 @@ def test_layer_base_operations():
     layer_name_dense = "layer_dense"
     layer_name_sparse = "layer_sparse"
 
-    shape = (10,10)
+    shape = (10, 10)
     data = np.random.random(shape)
     dense_array = data
     sparse_array = csr_matrix(data)
@@ -455,8 +511,12 @@ def test_layer_base_operations():
         cap_adata.create_layer(name=layer_name_sparse, matrix=sparse_array)
 
     with read_h5ad(file_path) as cap_adata:
-        assert np.array_equal(dense_array, cap_adata.layers[layer_name_dense]), "Must be correct dense matrix!"
-        assert np.array_equal(sparse_array.todense(), cap_adata.layers[layer_name_sparse][:].todense()), "Must be correct sparse matrix!"
+        assert np.array_equal(
+            dense_array, cap_adata.layers[layer_name_dense]
+        ), "Must be correct dense matrix!"
+        assert np.array_equal(
+            sparse_array.todense(), cap_adata.layers[layer_name_sparse][:].todense()
+        ), "Must be correct sparse matrix!"
 
     # Test remove layers
     with read_h5ad(file_path, edit=True) as cap_adata:
@@ -464,18 +524,24 @@ def test_layer_base_operations():
         cap_adata.remove_layer(layer_name_sparse)
 
     with read_h5ad(file_path) as cap_adata:
-        assert layer_name_dense not in cap_adata.layers.keys(), "Dense matrix must be removed!"
-        assert layer_name_sparse not in cap_adata.layers.keys(), "Sparse matrix must be removed!"
+        assert (
+            layer_name_dense not in cap_adata.layers.keys()
+        ), "Dense matrix must be removed!"
+        assert (
+            layer_name_sparse not in cap_adata.layers.keys()
+        ), "Sparse matrix must be removed!"
 
     # Test modify layers
     layer_name_edit = "layer_for_edit"
     data = np.ones(shape)
-    with read_h5ad(file_path, edit=True) as cap_adata: # fill layer
+    with read_h5ad(file_path, edit=True) as cap_adata:  # fill layer
         cap_adata.create_layer(name=layer_name_edit, matrix=data)
-    with read_h5ad(file_path, edit=True) as cap_adata: # modify backed
-        cap_adata.layers[layer_name_edit][0:1,0:1] = 0
-    with read_h5ad(file_path) as cap_adata: # check is changed
-        assert False == np.array_equal(data, cap_adata.layers[layer_name_edit][:]), "Layer matrix must be edited previously!"
+    with read_h5ad(file_path, edit=True) as cap_adata:  # modify backed
+        cap_adata.layers[layer_name_edit][0:1, 0:1] = 0
+    with read_h5ad(file_path) as cap_adata:  # check is changed
+        assert False == np.array_equal(
+            data, cap_adata.layers[layer_name_edit][:]
+        ), "Layer matrix must be edited previously!"
 
     os.remove(file_path)
 
@@ -487,13 +553,15 @@ def test_layer_create_append():
 
     adata.write_h5ad(file_path)
 
-    shape = (10,10)
+    shape = (10, 10)
     data = np.random.random(shape)
 
     # Test add empty dense and sparse data layers and edit them
     layer_name_empty_dense = "layer_empty_dense"
+
     def layer_name_empty_sparse(format: str):
         return f"layer_empty_sparse_{format}"
+
     def sparse_array_class(format: str):
         return csr_matrix if format == "csr" else csc_matrix
 
@@ -524,7 +592,7 @@ def test_layer_create_append():
         for format in ["csr", "csc"]:
             name = layer_name_empty_sparse(format)
             sparse_dataset = cap_adata.layers[name]
-            chunk_shape = (1,10) if format == "csr" else (10,1)
+            chunk_shape = (1, 10) if format == "csr" else (10, 1)
             array_class = sparse_array_class(format)
             chunk_data = array_class(np.ones(chunk_shape))
             sparse_dataset.append(chunk_data)
@@ -532,13 +600,92 @@ def test_layer_create_append():
                 "shape": chunk_data.data.shape,
                 "dtype": chunk_data.data.dtype,
             }
-    with read_h5ad(file_path) as cap_adata: # check is changed
-        assert np.any(cap_adata.layers[layer_name_empty_dense][:] == 1), "Dense layer is not changed!"
+    with read_h5ad(file_path) as cap_adata:  # check is changed
+        assert np.any(
+            cap_adata.layers[layer_name_empty_dense][:] == 1
+        ), "Dense layer is not changed!"
         for format in ["csr", "csc"]:
             name = layer_name_empty_sparse(format)
             matrix = cap_adata.layers[name][:]
-            assert np.any(matrix.toarray() == 1), f"Layer {format} matrix must be edited previously!"
-            assert matrix.data.shape == sparse_info[format]["shape"], "shape is incorrect!"
+            assert np.any(
+                matrix.toarray() == 1
+            ), f"Layer {format} matrix must be edited previously!"
+            assert (
+                matrix.data.shape == sparse_info[format]["shape"]
+            ), "shape is incorrect!"
             assert matrix.data.dtype == sparse_info[format]["dtype"], "dtype is wrong!"
+
+    os.remove(file_path)
+
+
+def test_read_obsp_varp():
+    shape = (10, 10, 2)
+    adata = ad.AnnData(X=np.ones(shape[:2], dtype=np.float32))
+    rng = np.random.default_rng()
+    adata.obsp["obsp_test"] = rng.random(shape)
+    adata.varp["varp_test"] = rng.random(shape)
+
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_read_obsp_varp.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path) as cap_adata:
+        assert np.allclose(adata.obsp["obsp_test"], cap_adata.obsp["obsp_test"][:])
+        assert np.allclose(adata.varp["varp_test"], cap_adata.varp["varp_test"][:])
+    os.remove(file_path)
+
+
+@pytest.mark.parametrize("field", ["obsp", "varp"])
+def test_modify_obsp_varp(field):
+    shape = (10, 10, 2)
+    adata = ad.AnnData(X=np.ones(shape[:2], dtype=np.float32))
+    rng = np.random.default_rng()
+    name = f"{field}_test"
+    getattr(adata, field)[name] = rng.random(shape)
+    ada_p = getattr(adata, field)[name]
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, f"test_modify_{field}.h5ad")
+    adata.write_h5ad(file_path)
+
+    s1 = np.s_[: shape[0] // 2]
+    s2 = np.s_[shape[0] // 2 :]
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        f = getattr(cap_adata, field)[name]
+        f.write_direct(np.zeros_like(ada_p), s1, s1)
+
+    with read_h5ad(file_path, edit=False) as cap_adata:
+        cap_p = getattr(cap_adata, field)[name]
+        assert (cap_p[s1] == 0).all()
+        assert np.allclose(ada_p[s2], cap_p[s2])
+
+    # test add new obsp/varp
+    new_matrix = rng.random(shape)
+    new_name = f"{field}_new"
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        f = getattr(cap_adata, f"create_{field}")
+        f(new_name, matrix=new_matrix)
+        assert new_name in getattr(cap_adata, field).keys()
+
+    with read_h5ad(file_path, edit=False) as cap_adata:
+        assert np.allclose(new_matrix, getattr(cap_adata, field)[new_name][:])
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        # test directly remove via dedicated method
+        f = getattr(cap_adata, f"remove_{field}")
+        f(new_name)
+        assert new_name not in cap_adata.obsp.keys()
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        # test removing via pop
+        f = getattr(cap_adata, field)
+        f.pop(name)
+        cap_adata.overwrite([field])
+
+    with read_h5ad(file_path, edit=False) as cap_adata:
+        # test that field is removed
+        assert new_name not in getattr(cap_adata, field).keys()
+        assert name not in getattr(cap_adata, field).keys()
+        assert len(getattr(cap_adata, field).keys()) == 0
 
     os.remove(file_path)

@@ -2,7 +2,7 @@ import logging
 import anndata as ad
 import numpy as np
 import h5py
-from typing import List, Union, Dict, Tuple, Final
+from typing import List, Union, Any, Tuple, Final
 import scipy.sparse as ss
 from packaging import version
 
@@ -13,11 +13,12 @@ else:
 
 from cap_anndata import CapAnnDataDF, CapAnnDataDict
 
-
 logger = logging.getLogger(__name__)
 
-X_NOTATION = Union[h5py.Dataset, ad.experimental.CSRDataset, ad.experimental.CSCDataset]
-OBSM_NOTATION = Dict[str, X_NOTATION]
+X_NOTATION = Union[
+    h5py.Dataset, ad.experimental.CSRDataset, ad.experimental.CSCDataset, None
+]
+ARRAY_MAPPING_NOTATION = CapAnnDataDict[str, X_NOTATION]
 
 NotLinkedObject: Final = "__NotLinkedObject"
 
@@ -86,6 +87,9 @@ class BaseLayerMatrixAndDf:
             # read whole df
             df = CapAnnDataDF.from_df(read_elem(h5_group), column_order=column_order)
         else:
+            if isinstance(columns, str):
+                # single column provided instead of list
+                columns = [columns]
             cols_to_read = [c for c in columns if c in column_order]
             df = CapAnnDataDF()
             df.column_order = column_order
@@ -102,7 +106,9 @@ class BaseLayerMatrixAndDf:
         return df
 
     def _write_elem(self, dest_key: str, elem: any, compression: str) -> None:
-        write_elem(self._file, dest_key, elem, dataset_kwargs={"compression": compression})
+        write_elem(
+            self._file, dest_key, elem, dataset_kwargs={"compression": compression}
+        )
 
     def _validate_cap_df(self, cap_df: CapAnnDataDF, axis: int) -> None:
         if not isinstance(cap_df, CapAnnDataDF):
@@ -119,6 +125,64 @@ class BaseLayerMatrixAndDf:
                 f"The number of rows in the input DataFrame should be equal to the number of {items} in the "
                 "AnnData object!"
             )
+
+    def _link_array_mapping(self, cap_dict: CapAnnDataDict, key: str) -> None:
+        """Method to update given cap_dict with backed array entities from the file."""
+        if key not in self._file.keys():
+            raise KeyError(f"The key {key} doesn't exist in the file! Ignore linking.")
+
+        group = self._file[key]
+        if not isinstance(group, h5py.Group):
+            raise ValueError(f"The object {key} must be a group!")
+
+        for array_name in group.keys():
+            array = group[array_name]
+            if isinstance(array, h5py.Dataset):
+                cap_dict[array_name] = array
+            elif isinstance(array, h5py.Group):
+                cap_dict[array_name] = sparse_dataset(array)
+            else:
+                raise ValueError(
+                    f"Can't link array in {key} due to unsupported type of object: {type(array)}"
+                )
+
+    def _create_new_matrix(
+        self,
+        dest: str,
+        matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+        matrix_shape: Union[tuple[int, int], None] = None,
+        data_dtype: Union[np.dtype, None] = None,
+        format: Union[str, None] = None,  # TODO: use Enum instead of str
+        compression: str = "lzf",
+    ) -> None:
+        if matrix is not None:
+            self._write_elem(dest, matrix, compression=compression)
+        else:
+            if format == "dense":
+                group = self._file.create_dataset(
+                    name=dest,
+                    shape=matrix_shape,
+                    dtype=data_dtype,
+                    compression=compression,
+                )
+                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#dense-arrays-specification-v0-2-0
+                group.attrs["encoding-type"] = "array"
+                group.attrs["encoding-version"] = "0.2.0"
+            elif format in [
+                "csr",
+                "csc",
+            ]:  # Based on https://github.com/appier/h5sparse/blob/master/h5sparse/h5sparse.py
+                if data_dtype is None:
+                    data_dtype = np.float64
+                if matrix_shape is None:
+                    matrix_shape = (0, 0)
+                sparse_class = ss.csr_matrix if format == "csr" else ss.csc_matrix
+                data = sparse_class(matrix_shape, dtype=data_dtype)
+                self._write_elem(dest, data, compression=compression)
+            else:
+                raise NotImplementedError(
+                    f"Format must  be 'dense', 'csr' or 'csc' but {format} given!"
+                )
 
 
 class RawLayer(BaseLayerMatrixAndDf):
@@ -153,9 +217,12 @@ class CapAnnData(BaseLayerMatrixAndDf):
         self._obs: CapAnnDataDF = None
         self._var: CapAnnDataDF = None
         self._X: X_NOTATION = None
-        self._obsm: OBSM_NOTATION = None
+        self._obsm: CapAnnDataDict = None
+        self._varm: CapAnnDataDict = None
         self._layers: CapAnnDataDict = None
         self._uns: CapAnnDataDict = None
+        self._obsp: CapAnnDataDict = None
+        self._varp: CapAnnDataDict = None
         self._raw: RawLayer = None
         self._shape: Tuple[int, int] = None
 
@@ -192,7 +259,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
         return self._raw
 
     @property
-    def uns(self) -> CapAnnDataDict:
+    def uns(self) -> CapAnnDataDict[str, Any]:
         if self._uns is None:
             self._uns = CapAnnDataDict(
                 {k: NotLinkedObject for k in self._file["uns"].keys()}
@@ -200,16 +267,34 @@ class CapAnnData(BaseLayerMatrixAndDf):
         return self._uns
 
     @property
-    def layers(self) -> CapAnnDataDict:
+    def layers(self) -> CapAnnDataDict[str, X_NOTATION]:
         if self._layers is None:
             self._link_layers()
         return self._layers
 
     @property
-    def obsm(self) -> OBSM_NOTATION:
+    def obsm(self) -> CapAnnDataDict[str, X_NOTATION]:
         if self._obsm is None:
             self._link_obsm()
         return self._obsm
+
+    @property
+    def varm(self) -> CapAnnDataDict[str, X_NOTATION]:
+        if self._varm is None:
+            self._link_varm()
+        return self._varm
+
+    @property
+    def obsp(self) -> CapAnnDataDict[str, X_NOTATION]:
+        if self._obsp is None:
+            self._link_obsp()
+        return self._obsp
+
+    @property
+    def varp(self) -> CapAnnDataDict[str, X_NOTATION]:
+        if self._varp is None:
+            self._link_varp()
+        return self._varp
 
     def read_obs(self, columns: List[str] = None, reset: bool = False) -> None:
         df = self._read_df("obs", columns=columns)
@@ -227,6 +312,61 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for col in df.columns:
                 self._var[col] = df[col]
 
+    def read_uns(self, keys: List[str] = None) -> None:
+        if keys is None:
+            keys = list(self.uns.keys())
+
+        for key in keys:
+            existing_keys = self.uns.keys()
+            if key in existing_keys:
+                source = self._file[f"uns/{key}"]
+                self.uns[key] = read_elem(source)
+
+    def _link_layers(self) -> None:
+        if self._layers is None:
+            self._layers = CapAnnDataDict()
+        if "layers" in self._file.keys():
+            self._link_array_mapping(cap_dict=self._layers, key="layers")
+
+    def _link_obsm(self) -> None:
+        key = "obsm"
+        if self._obsm is None:
+            self._obsm = CapAnnDataDict()
+        if key in self._file.keys():
+            self._link_array_mapping(cap_dict=self._obsm, key=key)
+
+    def _link_varm(self) -> None:
+        key = "varm"
+        if self._varm is None:
+            self._varm = CapAnnDataDict()
+        if key in self._file.keys():
+            self._link_array_mapping(cap_dict=self._varm, key=key)
+
+    def _link_obsp(self):
+        key = "obsp"
+        if self._obsp is None:
+            self._obsp = CapAnnDataDict()
+
+        if key in self._file.keys():
+            self._link_array_mapping(cap_dict=self._obsp, key=key)
+
+    def _link_varp(self):
+        key = "varp"
+        if self._varp is None:
+            self._varp = CapAnnDataDict()
+
+        if key in self._file.keys():
+            self._link_array_mapping(cap_dict=self._varp, key=key)
+
+    def obsm_keys(self) -> List[str]:
+        return list(self.obsm.keys())
+
+    def obs_keys(self) -> List[str]:
+        return self.obs.column_order.tolist()
+
+    def var_keys(self) -> List[str]:
+        return self.var.column_order.tolist()
+
     def overwrite(self, fields: List[str] = None, compression: str = "lzf") -> None:
         field_to_entity = {
             "obs": self.obs,
@@ -234,6 +374,10 @@ class CapAnnData(BaseLayerMatrixAndDf):
             "raw.var": self.raw.var if self.raw is not None else None,
             "uns": self.uns,
             "layers": self.layers,
+            "obsm": self.obsm,
+            "varm": self.varm,
+            "obsp": self.obsp,
+            "varp": self.varp,
         }
 
         if fields is None:
@@ -255,7 +399,9 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 key = key.replace(".", "/") if key == "raw.var" else key
 
                 for col in entity.columns:
-                    self._write_elem(f"{key}/{col}", entity[col].values, compression=compression)
+                    self._write_elem(
+                        f"{key}/{col}", entity[col].values, compression=compression
+                    )
 
                 column_order = entity.column_order
                 if (
@@ -272,105 +418,147 @@ class CapAnnData(BaseLayerMatrixAndDf):
             for key in self.uns.keys_to_remove:
                 del self._file[f"uns/{key}"]
 
-        if "layers" in fields:
-            for key in self.layers.keys_to_remove:
-                del self._file[f"layers/{key}"]
+        for field in ["layers", "obsm", "varm", "obsp", "varp"]:
+            if field in fields:
+                for key in field_to_entity[field].keys_to_remove:
+                    del self._file[f"{field}/{key}"]
 
-    def create_layer(self,
-                     name: str,
-                     matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
-                     matrix_shape: Union[tuple[int, int], None] = None,
-                     data_dtype: Union[np.dtype, None] = None,
-                     format: Union[str, None] = None,
-                     compression: str = "lzf"
-                    ) -> None:
+    def create_layer(
+        self,
+        name: str,
+        matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+        matrix_shape: Union[tuple[int, int], None] = None,
+        data_dtype: Union[np.dtype, None] = None,
+        format: Union[str, None] = None,
+        compression: str = "lzf",
+    ) -> None:
         """
         The empty layer will be created in the case of `matrix` is None.
         """
-        dest = f"layers/{name}"
-
-        if "layers" not in self._file.keys():
-            self._file.create_group('layers')
-
-        if name in self.layers.keys():
-            raise ValueError(f"Please explicitly remove the old layer '{name}' before creating a new one! Use `remove_layer` method.")
-
-        if matrix is not None:
-            self._write_elem(dest, matrix, compression=compression)
-        else:
-            if format == "dense":
-                group = self._file.create_dataset(name=dest, shape=matrix_shape, dtype=data_dtype, compression=compression)
-                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#dense-arrays-specification-v0-2-0
-                group.attrs['encoding-type'] = 'array'
-                group.attrs['encoding-version'] = '0.2.0'
-            elif format in ["csr", "csc"]: # Based on https://github.com/appier/h5sparse/blob/master/h5sparse/h5sparse.py
-                if data_dtype is None:
-                    data_dtype = np.float64
-                if matrix_shape is None:
-                    matrix_shape = (0, 0)
-                sparse_class = ss.csr_matrix if format == "csr" else ss.csc_matrix
-                data = sparse_class(matrix_shape, dtype=data_dtype)
-                group = self._file.create_group(dest)
-                # https://anndata.readthedocs.io/en/latest/fileformat-prose.html#sparse-arrays
-                group.attrs['encoding-type'] = f'{format}_matrix'
-                group.attrs['encoding-version'] = '0.1.0'
-                group.attrs['shape'] = matrix_shape
-                group.create_dataset('data', data=data.data, dtype=data_dtype, maxshape=(None,), chunks=True, compression=compression)
-                group.create_dataset('indices', data=data.indices, dtype=data.indices.dtype, maxshape=(None,), chunks=True, compression=compression)
-                group.create_dataset('indptr', data=data.indptr, dtype=data.indptr.dtype, maxshape=(None,), chunks=True, compression=compression)
-            else:
-                raise NotImplementedError(f"Format must  be 'dense', 'csr' or 'csc' but {format} given!")
-
+        self._create_new_matrix_in_field(
+            field="layers",
+            name=name,
+            matrix=matrix,
+            matrix_shape=matrix_shape,
+            data_dtype=data_dtype,
+            format=format,
+            compression=compression,
+        )
         self._link_layers()
 
-    def remove_layer(self, name: str):
+    def create_obsm(
+        self,
+        name: str,
+        matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+        matrix_shape: Union[tuple[int, int], None] = None,
+        data_dtype: Union[np.dtype, None] = None,
+        format: Union[str, None] = None,
+        compression: str = "lzf",
+    ) -> None:
+        self._create_new_matrix_in_field(
+            field="obsm",
+            name=name,
+            matrix=matrix,
+            matrix_shape=matrix_shape,
+            data_dtype=data_dtype,
+            format=format,
+            compression=compression,
+        )
+        self._link_obsm()
+
+    def create_varm(
+        self,
+        name: str,
+        matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+        matrix_shape: Union[tuple[int, int], None] = None,
+        data_dtype: Union[np.dtype, None] = None,
+        format: Union[str, None] = None,
+        compression: str = "lzf",
+    ) -> None:
+        self._create_new_matrix_in_field(
+            field="varm",
+            name=name,
+            matrix=matrix,
+            matrix_shape=matrix_shape,
+            data_dtype=data_dtype,
+            format=format,
+            compression=compression,
+        )
+        self._link_varm()
+
+    def create_obsp(
+        self,
+        name: str,
+        matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+        matrix_shape: Union[tuple[int, int], None] = None,
+        data_dtype: Union[np.dtype, None] = None,
+        format: Union[str, None] = None,
+        compression: str = "lzf",
+    ) -> None:
+        self._create_new_matrix_in_field(
+            field="obsp",
+            name=name,
+            matrix=matrix,
+            matrix_shape=matrix_shape,
+            data_dtype=data_dtype,
+            format=format,
+            compression=compression,
+        )
+        self._link_obsp()
+
+    def create_varp(
+        self,
+        name: str,
+        matrix: Union[np.ndarray, ss.csr_matrix, ss.csc_matrix, None] = None,
+        matrix_shape: Union[tuple[int, int], None] = None,
+        data_dtype: Union[np.dtype, None] = None,
+        format: Union[str, None] = None,
+        compression: str = "lzf",
+    ) -> None:
+
+        self._create_new_matrix_in_field(
+            field="varp",
+            name=name,
+            matrix=matrix,
+            matrix_shape=matrix_shape,
+            data_dtype=data_dtype,
+            format=format,
+            compression=compression,
+        )
+        self._link_varp()
+
+    def _create_new_matrix_in_field(self, field, name, **kwargs):
+        """**kwargs: matrix, matrix_shape, data_dtype, format, compression"""
+        dest = f"{field}/{name}"
+        field_entity = getattr(self, field)
+        if name in field_entity.keys():
+            raise ValueError(
+                f"Please explicitly remove the existing '{name}' entity from {field} "
+                f"before creating a new one!"
+            )
+        if field not in self._file.keys():
+            self._file.create_group(field)
+        self._create_new_matrix(dest=dest, **kwargs)
+
+    def remove_layer(self, name: str) -> None:
         del self._file[f"layers/{name}"]
+        self._link_layers()
 
-    def read_uns(self, keys: List[str] = None) -> None:
-        if keys is None:
-            keys = list(self.uns.keys())
+    def remove_obsp(self, name: str) -> None:
+        del self._file[f"obsp/{name}"]
+        self._link_obsp()
 
-        for key in keys:
-            existing_keys = self.uns.keys()
-            if key in existing_keys:
-                source = self._file[f"uns/{key}"]
-                self.uns[key] = read_elem(source)
+    def remove_varp(self, name: str) -> None:
+        del self._file[f"varp/{name}"]
+        self._link_varp()
 
-    def _link_layers(self) -> None:
-        if self._layers is None:
-            self._layers = CapAnnDataDict()
-        if "layers" in self._file.keys():
-            group = self._file["layers"]
-            for entity_name in group.keys():
-                entity = group[entity_name]
-                if isinstance(entity, h5py.Dataset):
-                    # dense array
-                    self._layers[entity_name] = entity
-                else:
-                    # sparse array
-                    self._layers[entity_name] = sparse_dataset(entity)
+    def remove_obsm(self, name: str) -> None:
+        del self._file[f"obsm/{name}"]
+        self._link_obsm()
 
-    def _link_obsm(self) -> None:
-        self._obsm = {}
-        if "obsm" in self._file.keys():
-            obsm_group = self._file["obsm"]
-            for entity_name in obsm_group.keys():
-                entity = obsm_group[entity_name]
-                if isinstance(entity, h5py.Dataset):
-                    # dense array
-                    self._obsm[entity_name] = entity
-                else:
-                    # sparse array
-                    self._obsm[entity_name] = sparse_dataset(entity)
-
-    def obsm_keys(self) -> List[str]:
-        return list(self.obsm.keys())
-
-    def obs_keys(self) -> List[str]:
-        return self.obs.column_order.tolist()
-
-    def var_keys(self) -> List[str]:
-        return self.var.column_order.tolist()
+    def remove_varm(self, name: str) -> None:
+        del self._file[f"varm/{name}"]
+        self._link_varm()
 
     def create_repr(self) -> str:
         indent = " " * 4
@@ -386,8 +574,8 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     if attr is not None:
                         in_memory = set(attr.keys())
                 keys = list(self._file[field].keys())
-                keys = [k for k in keys if k != '_index']
-                keys = [(k if k not in in_memory else f'{k}*') for k in keys]
+                keys = [k for k in keys if k != "_index"]
+                keys = [(k if k not in in_memory else f"{k}*") for k in keys]
                 keys_str = str(keys).replace("*'", "'*")
                 s += f"\n{indent}{field}: {keys_str}"
         s += f"\n{indent}Note: fields marked with * are in-memory objects."
@@ -398,7 +586,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def __str__(self) -> str:
         return self.create_repr()
-    
+
     def __enter__(self):
         return self
 
