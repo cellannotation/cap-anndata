@@ -260,8 +260,9 @@ with read_h5ad(file_path, edit=True) as cap_adata:
     sparse_dataset = cap_adata.layers["empty_sparse_matrix"]
     sparse_dataset.append(chunk_data) # chunk_data must be 'csr' or 'csc' matrix
 
-# Remove layer
-cap_adata.remove_layer("dense_array")
+with read_h5ad(file_path, edit=True) as cap_adata:
+    # Remove layer
+    cap_adata.remove_layer("dense_array")
 ```
 
 #### 8. Join and Merge DataFrames
