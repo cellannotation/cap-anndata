@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='cap_anndata',
-    version='0.2.2',
+    version='0.3.0',
     author='R. Mukhin, A. Isaev',
     author_email='roman@ebookapplications.com',
     packages=find_packages(exclude=["test"]),

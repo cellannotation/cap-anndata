@@ -2,17 +2,14 @@
 
 ## [Unreleased]
 
+## [v0.3.0] - 2024-09-19
 ### Added
 - **Support more AnnData fields**, additional API for accessing, modifying and deleting fields: `layers`, `obsm`, `varm`, `obsp`, `varp` was added.([#22](https://github.com/cellannotation/cap-anndata/pull/22), [#26](https://github.com/cellannotation/cap-anndata/pull/26)) 
 - **String representation** for `CapAnnData` objects. ([#24](https://github.com/cellannotation/cap-anndata/pull/24))
 - **Deprecation warnings** for `read_directly` function. ([#25](https://github.com/cellannotation/cap-anndata/pull/25)). It is recommended to use `read_h5ad` instead.
 
-### Removed
-- **`CapAnnDataUns` class** removed and replaced with the new `CapAnnDataDict` class.
-- **`test_backed_uns.py` test file** deleted, superseded by tests for `CapAnnDataDict`.
-
 ### Changed
-- **Dependencies updated** in `setup.py` and `requirements.txt` to relax version constraints and fix issues. ([#23](https://github.com/cellannotation/cap-anndata/pull/26))
+- **Dependencies updated** in `setup.py` and `requirements.txt` to relax version constraints. ([#23](https://github.com/cellannotation/cap-anndata/pull/26))
 - **Internal implementation** `CapAnnDataUns` was renamed to `CapAnnDataDict`.
 
 ### Fixed
@@ -30,7 +27,7 @@
 ## [v0.2.1] - 2024-06-14
 
 ### Fixed
-- **Python 3.9 Compality**: Fixed type notation in `CapAnnDataDF`.
+- **Python 3.9 Compatibility**: Fixed type notation in `CapAnnDataDF`.
 
 ## [v0.2.0] - 2024-06-12
 
