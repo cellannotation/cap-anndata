@@ -15,6 +15,9 @@
 - **Dependencies updated** in `setup.py` and `requirements.txt` to relax version constraints and fix issues. ([#23](https://github.com/cellannotation/cap-anndata/pull/26))
 - **Internal implementation** `CapAnnDataUns` was renamed to `CapAnnDataDict`.
 
+### Fixed
+- **Empty raw layer** fix. The situation when raw h5py.Group exists in the .h5ad file but is empty is recognized as no raw layer exists. ([#27](https://github.com/cellannotation/cap-anndata/pull/27))
+
 ## [v0.2.2] - 2024-08-28
 
 ### Added
