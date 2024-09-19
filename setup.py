@@ -11,7 +11,9 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/cellannotation/cap-anndata',
     project_urls={
-        "Bug Tracker": "https://github.com/cellannotation/cap-anndata/issues"
+        "Bug Tracker": "https://github.com/cellannotation/cap-anndata/issues",
+        "Changelog": "https://github.com/cellannotation/cap-anndata/blob/main/CHANGELOG.md",
+        "Documentation": "https://github.com/cellannotation/cap-anndata/blob/main/HOWTO.md",
     },
     classifiers=[
         "Programming Language :: Python :: 3.9",
