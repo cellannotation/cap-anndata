@@ -255,6 +255,10 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 logger.warning("Can't read raw.var since raw layer doesn't exist!")
                 return
 
+            if len(self._file["raw"].keys()) == 0:
+                logger.warning("The raw layer is empty!")
+                return
+
             self._raw = RawLayer(self._file)
         return self._raw
 
