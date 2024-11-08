@@ -9,7 +9,7 @@ from packaging import version
 if version.parse(ad.__version__) < version.parse("0.11.0"):
     from anndata.experimental import sparse_dataset, read_elem, write_elem
 else:
-    from anndata import sparse_dataset, read_elem, write_elem
+    from anndata.io import sparse_dataset, read_elem, write_elem
 
 from cap_anndata import CapAnnDataDF, CapAnnDataDict
 
