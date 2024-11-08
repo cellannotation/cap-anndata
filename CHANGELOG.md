@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [v0.3.1] - 2024-11-08
+
+### Fixed
+- **AnnData v0.11.0 compatibility** fix. New AnnData package version API is supported. ([#30](https://github.com/cellannotation/cap-anndata/pull/30))
+
+
 ## [v0.3.0] - 2024-09-19
 ### Added
 - **Support more AnnData fields**, additional API for accessing, modifying and deleting fields: `layers`, `obsm`, `varm`, `obsp`, `varp` was added.([#22](https://github.com/cellannotation/cap-anndata/pull/22), [#26](https://github.com/cellannotation/cap-anndata/pull/26)) 
