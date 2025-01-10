@@ -103,6 +103,23 @@ def test_partial_read():
     pd.testing.assert_index_equal(adata.raw.var.index, cap_adata.raw.var.index)
 
 
+def test_overwrite_dataframe_before_read_obs():
+    x = np.ones((10, 10), dtype=np.float32)
+    adata = ad.AnnData(X=x)
+    adata.obs["columns"] = "value"
+    adata.write_h5ad("tmp.h5ad")
+    del adata
+
+    with read_h5ad("tmp.h5ad", True) as adata:
+        # https://github.com/cellannotation/cap-anndata/issues/33
+        adata.obs["new_column"] = "new_value"
+        adata.overwrite(["obs"])
+
+    with read_h5ad("tmp.h5ad") as adata:
+        adata.read_obs("new_column")
+        assert (adata.obs["new_column"] == "new_value").all(), "Wrong values in column!"
+
+
 @pytest.mark.parametrize("compression", ["gzip", "lzf"])
 def test_overwrite_df(compression):
     adata = get_filled_anndata()
@@ -687,5 +704,30 @@ def test_modify_obsp_varp(field):
         assert new_name not in getattr(cap_adata, field).keys()
         assert name not in getattr(cap_adata, field).keys()
         assert len(getattr(cap_adata, field).keys()) == 0
+
+    os.remove(file_path)
+
+
+def test_main_var_layers():
+    var_index = [f"ind_{i}" for i in range(10)]
+    raw_var_index = [f"raw_ind_{i}" for i in range(10)]
+
+    x = np.eye(10, dtype=np.float32)
+    raw_x = x * 2
+    adata = ad.AnnData(X=raw_x)
+    adata.var.index = raw_var_index
+    adata.raw = adata
+    adata.X = x
+    adata.var.index = var_index
+    
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_main_var_layers.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path) as cap_anndata:
+        assert cap_anndata.var.index.tolist() == var_index
+        assert cap_anndata.raw.var.index.tolist() == raw_var_index
+        assert np.allclose(cap_anndata.X[:], x)
+        assert np.allclose(cap_anndata.raw.X[:], raw_x)
 
     os.remove(file_path)
