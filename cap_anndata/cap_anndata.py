@@ -57,15 +57,7 @@ class BaseLayerMatrixAndDf:
         return shape
 
     def _lazy_df_load(self, key: str) -> CapAnnDataDF:
-        df = CapAnnDataDF()
-        attribute = self._path_to_content + key
-        column_order = self._read_attr(self._file[attribute], "column-order")
-        df.column_order = column_order
-        if df.column_order.dtype != object:
-            # empty DataFrame will have column_order as float64
-            # which leads to failure in overwrite method
-            df.column_order = df.column_order.astype(object)
-        return df
+        return self._read_df(key=key, columns=[])
 
     @staticmethod
     def _read_attr(obj: Union[h5py.Group, h5py.Dataset], attr_name: str) -> any:

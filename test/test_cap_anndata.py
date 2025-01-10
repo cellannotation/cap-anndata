@@ -103,6 +103,23 @@ def test_partial_read():
     pd.testing.assert_index_equal(adata.raw.var.index, cap_adata.raw.var.index)
 
 
+def test_owerwrite_dataframe_before_read_obs():
+    x = np.ones((10, 10), dtype=np.float32)
+    adata = ad.AnnData(X=x)
+    adata.obs["columns"] = "value"
+    adata.write_h5ad("tmp.h5ad")
+    del adata
+
+    with read_h5ad("tmp.h5ad", True) as adata:
+        # https://github.com/cellannotation/cap-anndata/issues/33
+        adata.obs["new_column"] = "new_value"
+        adata.overwrite(["obs"])
+
+    with read_h5ad("tmp.h5ad") as adata:
+        adata.read_obs("new_column")
+        assert (adata.obs["new_column"] == "new_value").all(), "Wrong values in column!"
+
+
 @pytest.mark.parametrize("compression", ["gzip", "lzf"])
 def test_overwrite_df(compression):
     adata = get_filled_anndata()
