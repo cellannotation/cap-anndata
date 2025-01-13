@@ -104,20 +104,23 @@ def test_partial_read():
 
 
 def test_overwrite_dataframe_before_read_obs():
+    path = "tmp.h5ad"
     x = np.ones((10, 10), dtype=np.float32)
     adata = ad.AnnData(X=x)
     adata.obs["columns"] = "value"
-    adata.write_h5ad("tmp.h5ad")
+    adata.write_h5ad(path)
     del adata
 
-    with read_h5ad("tmp.h5ad", True) as adata:
+    with read_h5ad(path, True) as adata:
         # https://github.com/cellannotation/cap-anndata/issues/33
         adata.obs["new_column"] = "new_value"
         adata.overwrite(["obs"])
 
-    with read_h5ad("tmp.h5ad") as adata:
+    with read_h5ad(path) as adata:
         adata.read_obs("new_column")
         assert (adata.obs["new_column"] == "new_value").all(), "Wrong values in column!"
+
+    os.remove(path)
 
 
 @pytest.mark.parametrize("compression", ["gzip", "lzf"])
@@ -127,12 +130,17 @@ def test_overwrite_df(compression):
     file_path = os.path.join(temp_folder, "test_overwrite_df.h5ad")
     adata.write_h5ad(file_path)
 
+    new_obs_index = None
     with read_h5ad(file_path, edit=True) as cap_adata:
+        # Modify 'obs'
         cap_adata.read_obs(columns=["cell_type"])
         cap_adata.obs["cell_type"] = [
             f"new_cell_type_{i%2}" for i in range(cap_adata.shape[0])
         ]
         cap_adata.obs["const_str"] = "some string"
+        # Modify obs 'index'
+        new_obs_index = [s + "_new" for s in cap_adata.obs.index]
+        cap_adata.obs.index = new_obs_index
         ref_obs = cap_adata.obs.copy()
 
         # Modify 'var'
@@ -161,6 +169,7 @@ def test_overwrite_df(compression):
     pd.testing.assert_frame_equal(
         ref_obs, adata.obs[ref_obs.columns.to_list()], check_frame_type=False
     )
+    assert (adata.obs.index == new_obs_index).all(), "Index must be changed!"
 
     # Assert changes in 'var'
     assert all([c in adata.var.columns for c in ref_var.columns])
@@ -731,3 +740,42 @@ def test_main_var_layers():
         assert np.allclose(cap_anndata.raw.X[:], raw_x)
 
     os.remove(file_path)
+
+
+@pytest.mark.parametrize("name", ["barcodes", "", None])
+def test_modify_index(name):
+    adata = get_base_anndata()
+    
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_main_var_layers.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path=file_path, edit=True) as cap_adata:
+        cap_adata.read_obs()
+        cap_adata.overwrite(["obs"])
+    
+    cap_adata = ad.read_h5ad(file_path)
+    pd.testing.assert_frame_equal(
+        left=adata.obs,
+        right=cap_adata.obs,
+        check_dtype=True,
+        check_index_type=True,
+        check_names=True,
+    )
+
+    with read_h5ad(file_path=file_path, edit=True) as cap_adata:
+        cap_adata.read_obs()
+        cap_adata.obs.index = pd.Series(data=[f"cell_{i}" for i in range(cap_adata.shape[0])], name=name)
+        cap_adata.overwrite(["obs"])
+    
+    with read_h5ad(file_path=file_path, edit=False) as cap_adata:
+        cap_adata.read_obs()
+        obs = cap_adata.obs
+    
+        assert obs is not None, "DataFrame must be loaded!"
+        assert obs.index is not None, "DataFrame must have Index!"
+        if not name:
+            assert obs.index.name == None, "Index name must not be set!"
+        else:
+            assert obs.index.name == name, "Index name must be set!"
+        assert obs.index.to_list() == [f"cell_{i}" for i in range(cap_adata.shape[0])], "Wrong index values!"
