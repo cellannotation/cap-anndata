@@ -737,3 +737,38 @@ def test_main_var_layers():
         assert np.allclose(cap_anndata.raw.X[:], raw_x)
 
     os.remove(file_path)
+
+
+def test_modify_index():
+    adata = get_base_anndata()
+    
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_main_var_layers.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path=file_path, edit=True) as cap_adata:
+        cap_adata.read_obs()
+        cap_adata.overwrite(["obs"])
+    
+    cap_adata = ad.read_h5ad(file_path)
+    pd.testing.assert_frame_equal(
+        left=adata.obs,
+        right=cap_adata.obs,
+        check_dtype=True,
+        check_index_type=True,
+        check_names=True,
+    )
+
+    with read_h5ad(file_path=file_path, edit=True) as cap_adata:
+        cap_adata.read_obs()
+        cap_adata.obs.index = pd.Series(data=[f"cell_{i}" for i in range(cap_adata.shape[0])], name="barcodes")
+        cap_adata.overwrite(["obs"])
+    
+    with read_h5ad(file_path=file_path, edit=False) as cap_adata:
+        cap_adata.read_obs()
+        obs = cap_adata.obs
+    
+    assert obs is not None
+    assert obs.index is not None
+    assert obs.index.name == "barcodes"
+    assert obs.index.to_list() == [f"cell_{i}" for i in range(cap_adata.shape[0])]
