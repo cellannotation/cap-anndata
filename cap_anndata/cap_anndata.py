@@ -409,8 +409,9 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
                 # Index update
                 index_name = entity.index.name
-                if index_name is not None:
-                    self._file[key].attrs["_index"] = index_name
+                if not index_name:
+                    index_name = "_index"
+                self._file[key].attrs["_index"] = index_name
                 index_col = self._read_attr(self._file[key], "_index")
                 self._write_elem(
                     f"{key}/{index_col}", entity.index.to_numpy(), compression=compression

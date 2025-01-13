@@ -104,20 +104,23 @@ def test_partial_read():
 
 
 def test_overwrite_dataframe_before_read_obs():
+    path = "tmp.h5ad"
     x = np.ones((10, 10), dtype=np.float32)
     adata = ad.AnnData(X=x)
     adata.obs["columns"] = "value"
-    adata.write_h5ad("tmp.h5ad")
+    adata.write_h5ad(path)
     del adata
 
-    with read_h5ad("tmp.h5ad", True) as adata:
+    with read_h5ad(path, True) as adata:
         # https://github.com/cellannotation/cap-anndata/issues/33
         adata.obs["new_column"] = "new_value"
         adata.overwrite(["obs"])
 
-    with read_h5ad("tmp.h5ad") as adata:
+    with read_h5ad(path) as adata:
         adata.read_obs("new_column")
         assert (adata.obs["new_column"] == "new_value").all(), "Wrong values in column!"
+
+    os.remove(path)
 
 
 @pytest.mark.parametrize("compression", ["gzip", "lzf"])
@@ -739,7 +742,8 @@ def test_main_var_layers():
     os.remove(file_path)
 
 
-def test_modify_index():
+@pytest.mark.parametrize("name", ["barcodes", "", None])
+def test_modify_index(name):
     adata = get_base_anndata()
     
     temp_folder = tempfile.mkdtemp()
@@ -761,14 +765,17 @@ def test_modify_index():
 
     with read_h5ad(file_path=file_path, edit=True) as cap_adata:
         cap_adata.read_obs()
-        cap_adata.obs.index = pd.Series(data=[f"cell_{i}" for i in range(cap_adata.shape[0])], name="barcodes")
+        cap_adata.obs.index = pd.Series(data=[f"cell_{i}" for i in range(cap_adata.shape[0])], name=name)
         cap_adata.overwrite(["obs"])
     
     with read_h5ad(file_path=file_path, edit=False) as cap_adata:
         cap_adata.read_obs()
         obs = cap_adata.obs
     
-        assert obs is not None
-        assert obs.index is not None
-        assert obs.index.name == "barcodes"
-        assert obs.index.to_list() == [f"cell_{i}" for i in range(cap_adata.shape[0])]
+        assert obs is not None, "DataFrame must be loaded!"
+        assert obs.index is not None, "DataFrame must have Index!"
+        if not name:
+            assert obs.index.name == None, "Index name must not be set!"
+        else:
+            assert obs.index.name == name, "Index name must be set!"
+        assert obs.index.to_list() == [f"cell_{i}" for i in range(cap_adata.shape[0])], "Wrong index values!"
