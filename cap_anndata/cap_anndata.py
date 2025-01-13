@@ -407,10 +407,14 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 ):  # Refs https://github.com/cellannotation/cap-anndata/issues/6
                     column_order = np.array([], dtype=np.float64)
 
+                # Index update
+                index_name = entity.index.name
+                if index_name is not None:
+                    self._file[key].attrs["_index"] = index_name
                 index_col = self._read_attr(self._file[key], "_index")
                 self._write_elem(
-                        f"{key}/{index_col}", entity.index.to_numpy(), compression=compression
-                    )
+                    f"{key}/{index_col}", entity.index.to_numpy(), compression=compression
+                )
 
                 self._file[key].attrs["column-order"] = column_order
 

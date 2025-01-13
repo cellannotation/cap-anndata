@@ -768,7 +768,7 @@ def test_modify_index():
         cap_adata.read_obs()
         obs = cap_adata.obs
     
-    assert obs is not None
-    assert obs.index is not None
-    assert obs.index.name == "barcodes"
-    assert obs.index.to_list() == [f"cell_{i}" for i in range(cap_adata.shape[0])]
+        assert obs is not None
+        assert obs.index is not None
+        assert obs.index.name == "barcodes"
+        assert obs.index.to_list() == [f"cell_{i}" for i in range(cap_adata.shape[0])]
