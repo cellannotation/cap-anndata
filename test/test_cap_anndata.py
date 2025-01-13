@@ -127,12 +127,17 @@ def test_overwrite_df(compression):
     file_path = os.path.join(temp_folder, "test_overwrite_df.h5ad")
     adata.write_h5ad(file_path)
 
+    new_obs_index = None
     with read_h5ad(file_path, edit=True) as cap_adata:
+        # Modify 'obs'
         cap_adata.read_obs(columns=["cell_type"])
         cap_adata.obs["cell_type"] = [
             f"new_cell_type_{i%2}" for i in range(cap_adata.shape[0])
         ]
         cap_adata.obs["const_str"] = "some string"
+        # Modify obs 'index'
+        new_obs_index = [s + "_new" for s in cap_adata.obs.index]
+        cap_adata.obs.index = new_obs_index
         ref_obs = cap_adata.obs.copy()
 
         # Modify 'var'
@@ -161,6 +166,7 @@ def test_overwrite_df(compression):
     pd.testing.assert_frame_equal(
         ref_obs, adata.obs[ref_obs.columns.to_list()], check_frame_type=False
     )
+    assert (adata.obs.index == new_obs_index).all(), "Index must be changed!"
 
     # Assert changes in 'var'
     assert all([c in adata.var.columns for c in ref_var.columns])

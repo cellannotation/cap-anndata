@@ -85,8 +85,10 @@ class BaseLayerMatrixAndDf:
             cols_to_read = [c for c in columns if c in column_order]
             df = CapAnnDataDF()
             df.column_order = column_order
+
             index_col = self._read_attr(h5_group, "_index")
-            df.index = read_elem(h5_group[index_col])
+            index = read_elem(h5_group[index_col])
+            df.index = index
 
             for col in cols_to_read:
                 df[col] = read_elem(h5_group[col])
@@ -404,6 +406,12 @@ class CapAnnData(BaseLayerMatrixAndDf):
                     column_order.size == 0
                 ):  # Refs https://github.com/cellannotation/cap-anndata/issues/6
                     column_order = np.array([], dtype=np.float64)
+
+                index_col = self._read_attr(self._file[key], "_index")
+                self._write_elem(
+                        f"{key}/{index_col}", entity.index.to_numpy(), compression=compression
+                    )
+
                 self._file[key].attrs["column-order"] = column_order
 
         if "uns" in fields:
