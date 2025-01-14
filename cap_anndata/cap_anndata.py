@@ -7,19 +7,33 @@ import scipy.sparse as ss
 from packaging import version
 
 if version.parse(ad.__version__) < version.parse("0.11.0"):
-    from anndata.experimental import sparse_dataset, read_elem, write_elem
+    from anndata.experimental import (
+        sparse_dataset,
+        read_elem,
+        write_elem,
+        CSRDataset,
+        CSCDataset,
+    )
 else:
-    from anndata.io import sparse_dataset, read_elem, write_elem
+    from anndata.io import (
+        sparse_dataset,
+        read_elem,
+        write_elem,
+    )
+    from anndata.abc import (
+        CSRDataset,
+        CSCDataset,
+    )
 
 from cap_anndata import CapAnnDataDF, CapAnnDataDict
 
 logger = logging.getLogger(__name__)
 
 X_NOTATION = Union[
-    h5py.Dataset, ad.experimental.CSRDataset, ad.experimental.CSCDataset, None
+    h5py.Dataset, CSRDataset, CSCDataset, None
 ]
 ARRAY_MAPPING_NOTATION = CapAnnDataDict[str, X_NOTATION]
-
+FIELDS_SUPPORTED_TO_OVERWRITE = ["obs", "var", "raw.var", "uns", "layers", "obsm", "varm", "obsp", "varp"]
 NotLinkedObject: Final = "__NotLinkedObject"
 
 
@@ -364,33 +378,39 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
     def var_keys(self) -> List[str]:
         return self.var.column_order.tolist()
+    
+    def field_to_entity(self, key):
+        if key == "obs":
+            return self.obs
+        elif key == "var":
+            return self.var
+        elif key == "raw.var":
+            return self.raw.var if self.raw is not None else None
+        elif key == "uns":
+            return self.uns
+        elif key == "layers":
+            return self.layers
+        elif key == "obsm":
+            return self.obsm
+        elif key == "varm":
+            return self.varm
+        elif key == "obsp":
+            return self.obsp
+        elif key == "varp":
+            return self.varp
+        else:
+            raise KeyError(
+                f"The field {key} is not supported! The list of supported fields are equal to {FIELDS_SUPPORTED_TO_OVERWRITE} "
+                f"attributes of the CapAnnData class."
+            )
 
     def overwrite(self, fields: List[str] = None, compression: str = "lzf") -> None:
-        field_to_entity = {
-            "obs": self.obs,
-            "var": self.var,
-            "raw.var": self.raw.var if self.raw is not None else None,
-            "uns": self.uns,
-            "layers": self.layers,
-            "obsm": self.obsm,
-            "varm": self.varm,
-            "obsp": self.obsp,
-            "varp": self.varp,
-        }
-
         if fields is None:
-            fields = list(field_to_entity.keys())
-        else:
-            for f in fields:
-                if f not in field_to_entity.keys():
-                    raise KeyError(
-                        f"The field {f} is not supported! The list of supported fields are equal to supported "
-                        f"attributes of the CapAnnData class: obs, var, raw.var and uns."
-                    )
+            fields = FIELDS_SUPPORTED_TO_OVERWRITE
 
         for key in ["obs", "var", "raw.var"]:
             if key in fields:
-                entity: CapAnnDataDF = field_to_entity[key]
+                entity: CapAnnDataDF = self.field_to_entity(key)
                 if entity is None:
                     continue
 
@@ -429,7 +449,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
 
         for field in ["layers", "obsm", "varm", "obsp", "varp"]:
             if field in fields:
-                for key in field_to_entity[field].keys_to_remove:
+                for key in self.field_to_entity(field).keys_to_remove:
                     del self._file[f"{field}/{key}"]
 
     def create_layer(
