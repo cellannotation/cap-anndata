@@ -1,12 +1,9 @@
 import pandas as pd
 import numpy as np
 from typing import List, Any, Union
-import logging
 
 from pandas._typing import Self
 from pandas.core.generic import bool_t
-
-logger = logging.getLogger(__name__)
 
 
 class CapAnnDataDF(pd.DataFrame):
