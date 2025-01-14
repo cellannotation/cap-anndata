@@ -33,7 +33,7 @@ X_NOTATION = Union[
     h5py.Dataset, CSRDataset, CSCDataset, None
 ]
 ARRAY_MAPPING_NOTATION = CapAnnDataDict[str, X_NOTATION]
-FIELDS_SUPORTED_TO_OVERWRITE = ["obs", "var", "raw.var", "uns", "layers", "obsm", "varm", "obsp", "varp"]
+FIELDS_SUPPORTED_TO_OVERWRITE = ["obs", "var", "raw.var", "uns", "layers", "obsm", "varm", "obsp", "varp"]
 NotLinkedObject: Final = "__NotLinkedObject"
 
 
@@ -400,13 +400,13 @@ class CapAnnData(BaseLayerMatrixAndDf):
             return self.varp
         else:
             raise KeyError(
-                f"The field {key} is not supported! The list of supported fields are equal to {FIELDS_SUPORTED_TO_OVERWRITE} "
+                f"The field {key} is not supported! The list of supported fields are equal to {FIELDS_SUPPORTED_TO_OVERWRITE} "
                 f"attributes of the CapAnnData class."
             )
 
     def overwrite(self, fields: List[str] = None, compression: str = "lzf") -> None:
         if fields is None:
-            fields = FIELDS_SUPORTED_TO_OVERWRITE
+            fields = FIELDS_SUPPORTED_TO_OVERWRITE
 
         for key in ["obs", "var", "raw.var"]:
             if key in fields:
