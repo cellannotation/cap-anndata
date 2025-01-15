@@ -17,10 +17,15 @@ class CapAnnDataDF(pd.DataFrame):
     _metadata = ["column_order"]
 
     def column_order_array(self) -> np.array:
-        if self.column_order is not None and isinstance(self.column_order, List):
-            return np.array(self.column_order)
+        order = self.column_order
+        if order is not None and isinstance(order, List):
+            # Convert to np.ndarray of str elements
+            arr = np.ndarray((len(order),),dtype=object)
+            for i in range(0, len(order)):
+                arr[i] = order[i]
+            return arr
         else:
-            return self.column_order
+            return order
 
     def rename_column(self, old_name: str, new_name: str) -> None:
         i = np.where(self.column_order_array() == old_name)[0]
