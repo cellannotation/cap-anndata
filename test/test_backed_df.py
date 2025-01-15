@@ -43,8 +43,6 @@ def test_from_df_class_method():
     data = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
     new_df = CapAnnDataDF.from_df(data)
     assert list(new_df.column_order) == ["A", "B"]
-    new_df.column_order = ["B", "A"]
-    assert list(new_df.column_order) == ["B", "A"]
 
 
 def test_column_order_integrity():

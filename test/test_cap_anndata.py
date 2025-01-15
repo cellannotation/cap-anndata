@@ -779,3 +779,32 @@ def test_modify_index(name):
         else:
             assert obs.index.name == name, "Index name must be set!"
         assert obs.index.to_list() == [f"cell_{i}" for i in range(cap_adata.shape[0])], "Wrong index values!"
+
+
+def test_column_order_changes():
+    adata = get_base_anndata(n_rows = 3, n_genes = 2, sparse=False)
+
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_column_order.h5ad")
+    adata.write_h5ad(file_path)
+
+    data = {"A": [1, 2, 3], "B": [4, 5, 6]}
+    with read_h5ad(file_path=file_path, edit=True) as cap_adata:
+        df = pd.DataFrame(data)
+        cap_df = CapAnnDataDF.from_df(df)
+        cap_adata.obs = CapAnnDataDF.from_df(cap_df)
+        cap_adata.overwrite(["obs"])
+
+    new_column_order = list(data.keys())
+    new_column_order.reverse()
+    with read_h5ad(file_path=file_path, edit=True) as cap_adata:
+        cap_adata.read_obs()
+        df = cap_adata.obs[new_column_order]
+        cap_df = CapAnnDataDF.from_df(df)
+        cap_adata.obs = cap_df
+        cap_adata.overwrite(["obs"])
+
+    with read_h5ad(file_path=file_path) as cap_adata:
+        cap_adata.read_obs()
+        assert list(cap_adata.obs.column_order) == new_column_order
+        assert list(cap_adata.obs.columns) == new_column_order

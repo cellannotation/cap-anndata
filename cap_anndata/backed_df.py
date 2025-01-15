@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import List, Any, Union
+from typing import Any, Union
 
 from pandas._typing import Self
 from pandas.core.generic import bool_t
