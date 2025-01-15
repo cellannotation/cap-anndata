@@ -91,7 +91,8 @@ class BaseLayerMatrixAndDf:
 
         if columns is None:
             # read whole df
-            df = CapAnnDataDF.from_df(read_elem(h5_group), column_order=column_order)
+            df = CapAnnDataDF.from_df(read_elem(h5_group))
+            df.column_order = column_order
         else:
             if isinstance(columns, str):
                 # single column provided instead of list

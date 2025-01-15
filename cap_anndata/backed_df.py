@@ -14,6 +14,7 @@ class CapAnnDataDF(pd.DataFrame):
     which must be a copy of h5py.Group attribute
     """
 
+    column_order: np.ndarray[Any] = None
     _metadata = ["column_order"]
 
     def rename_column(self, old_name: str, new_name: str) -> None:
@@ -32,12 +33,9 @@ class CapAnnDataDF(pd.DataFrame):
         return super().__setitem__(key, value)
 
     @classmethod
-    def from_df(cls, df: pd.DataFrame, column_order: List[str] = None) -> Self:
-        if column_order is None:
-            column_order = df.columns.to_numpy()
-
+    def from_df(cls, df: pd.DataFrame) -> Self:
         new_inst = cls(df)
-        new_inst.column_order = column_order
+        new_inst.column_order = df.columns.to_numpy()
         return new_inst
 
     def join(self, other: Any, **kwargs) -> Self:
@@ -48,8 +46,9 @@ class CapAnnDataDF(pd.DataFrame):
             ]
         else:
             new_columns = [col for col in other.columns if col not in self.column_order]
-        column_order = np.append(self.column_order, new_columns)
-        return self.from_df(result, column_order=column_order)
+        df = self.from_df(result)
+        df.column_order = np.append(self.column_order, new_columns)
+        return df
 
     def merge(self, right, **kwargs) -> Self:
         result = super().merge(right=right, **kwargs)
@@ -59,8 +58,11 @@ class CapAnnDataDF(pd.DataFrame):
             ]
         else:
             new_columns = [col for col in right.columns if col not in self.column_order]
-        column_order = np.append(self.column_order, new_columns)
-        return self.from_df(result, column_order=column_order)
+        df = self.from_df(result)
+        df.column_order = np.append(self.column_order, new_columns)
+        return df
 
     def copy(self, deep: Union[bool_t, None] = True) -> Self:
-        return self.from_df(super().copy(deep=deep), column_order=self.column_order)
+        df = self.from_df(super().copy(deep=deep))
+        df.column_order = self.column_order
+        return df
