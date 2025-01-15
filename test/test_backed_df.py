@@ -41,9 +41,8 @@ def test_remove_column():
 
 def test_from_df_class_method():
     data = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
-    new_df = CapAnnDataDF.from_df(data, ["B", "A"])
-
-    assert list(new_df.column_order) == ["B", "A"]
+    new_df = CapAnnDataDF.from_df(data)
+    assert list(new_df.column_order) == ["A", "B"]
 
 
 def test_column_order_integrity():
@@ -59,23 +58,22 @@ def test_column_order_integrity():
 
 def test_join():
     data1 = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
-    data2 = pd.DataFrame({"D": [7, 8, 9], "E": [10, 11, 12]})
-    cap_anndata_df1 = CapAnnDataDF.from_df(data1, column_order=["A", "B", "C"])
+    data2 = pd.DataFrame({"C": [7, 8, 9], "D": [10, 11, 12]})
+    cap_anndata_df1 = CapAnnDataDF.from_df(data1)
+    cap_anndata_df2 = cap_anndata_df1.join(data2, how="left")
 
-    cap_anndata_df1 = cap_anndata_df1.join(data2, how="left")
-
-    expected_order = ["A", "B", "C", "D", "E"]
-    assert list(cap_anndata_df1.column_order) == expected_order
-    assert cap_anndata_df1.shape == (3, 4)
+    expected_order = ["A", "B", "C", "D"]
+    assert list(cap_anndata_df2.column_order) == expected_order
+    assert cap_anndata_df2.shape == (3, 4)
 
 
 def test_merge():
     data1 = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
     data2 = pd.DataFrame({"A": [2, 3, 4], "D": [10, 11, 12]})
-    cap_anndata_df1 = CapAnnDataDF.from_df(data1, column_order=["A", "B", "C"])
+    cap_anndata_df1 = CapAnnDataDF.from_df(data1)
 
     cap_anndata_df1 = cap_anndata_df1.merge(data2, how="inner", on="A")
 
-    expected_order = ["A", "B", "C", "D"]
+    expected_order = ["A", "B", "D"]
     assert list(cap_anndata_df1.column_order) == expected_order
     assert cap_anndata_df1.shape == (2, 3)

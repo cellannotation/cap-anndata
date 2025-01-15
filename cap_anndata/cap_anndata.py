@@ -374,10 +374,10 @@ class CapAnnData(BaseLayerMatrixAndDf):
         return list(self.obsm.keys())
 
     def obs_keys(self) -> List[str]:
-        return self.obs.column_order.tolist()
+        return self.obs.column_order_array().tolist()
 
     def var_keys(self) -> List[str]:
-        return self.var.column_order.tolist()
+        return self.var.column_order_array().tolist()
     
     def field_to_entity(self, key):
         if key == "obs":
@@ -421,7 +421,7 @@ class CapAnnData(BaseLayerMatrixAndDf):
                         f"{key}/{col}", entity[col].values, compression=compression
                     )
 
-                column_order = entity.column_order
+                column_order = entity.column_order_array()
                 if (
                     column_order.size == 0
                 ):  # Refs https://github.com/cellannotation/cap-anndata/issues/6
