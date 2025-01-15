@@ -296,8 +296,8 @@ import pandas as pd
 
 data1 = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
 data2 = pd.DataFrame({'D': [7, 8, 9], 'E': [10, 11, 12]})
-cap_anndata_df1 = CapAnnDataDF.from_df(data1)
-cap_anndata_df1.column_order=['C', 'B', 'A'] # could be changed
+cap_anndata_df1 = CapAnnDataDF.from_df(data1, column_order=['A', 'B', 'C'])
+cap_anndata_df1.column_order = ['C', 'B', 'A'] # could be changed
 
 cap_df = cap_anndata_df1.join(data2, how='left')
 
