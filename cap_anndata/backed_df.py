@@ -19,11 +19,8 @@ class CapAnnDataDF(pd.DataFrame):
     def column_order_array(self) -> np.array:
         order = self.column_order
         if order is not None and isinstance(order, List):
-            # Convert to np.ndarray of str elements
-            arr = np.ndarray((len(order),),dtype=object)
-            for i in range(0, len(order)):
-                arr[i] = order[i]
-            return arr
+            # Convert it to numpy array of str elements
+            return np.array(order, dtype=object)
         else:
             return order
 

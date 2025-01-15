@@ -13,7 +13,7 @@ def test_from_df():
 
 def test_create_column():
     data = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
-    cap_anndata_df = CapAnnDataDF.from_df(data)
+    cap_anndata_df = CapAnnDataDF.from_df(data, column_order=["A", "B", "D"])
     cap_anndata_df["C"] = [7, 8, 9]
 
     assert "C" in cap_anndata_df.columns
