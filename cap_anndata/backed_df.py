@@ -17,7 +17,7 @@ class CapAnnDataDF(pd.DataFrame):
     _metadata = ["column_order"]
 
     def column_order_array(self) -> np.array:
-        if self.column_order is not None and type(self.column_order) is List:
+        if self.column_order is not None and isinstance(self.column_order, List):
             return np.array(self.column_order)
         else:
             return self.column_order
@@ -43,7 +43,7 @@ class CapAnnDataDF(pd.DataFrame):
     def from_df(cls, df: pd.DataFrame, column_order: Union[np.array, List[str], None] = None) -> Self:
         if column_order is None:
             column_order = df.columns.to_numpy()
-        elif type(column_order) is List:
+        elif isinstance(column_order, List):
             column_order = np.array(column_order)
         new_inst = cls(df)
         new_inst.column_order = column_order
