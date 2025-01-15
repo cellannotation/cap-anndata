@@ -14,12 +14,13 @@ class CapAnnDataDF(pd.DataFrame):
     which must be a copy of h5py.Group attribute
     """
 
-    column_order: np.ndarray[Any] = None
     _metadata = ["column_order"]
 
     def rename_column(self, old_name: str, new_name: str) -> None:
         i = np.where(self.column_order == old_name)[0]
-        self.column_order[i] = new_name
+        tmp_array = self.column_order.copy()
+        tmp_array[i] = new_name
+        self.column_order = tmp_array.copy()
         self.rename(columns={old_name: new_name}, inplace=True)
 
     def remove_column(self, col_name: str) -> None:
