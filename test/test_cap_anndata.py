@@ -799,8 +799,16 @@ def test_column_order_changes():
     new_column_order.reverse()
     with read_h5ad(file_path=file_path, edit=True) as cap_adata:
         cap_adata.read_obs()
-        df = cap_adata.obs[new_column_order]
+        df = cap_adata.obs[new_column_order] # change order via dataframe
         cap_df = CapAnnDataDF.from_df(df)
+        cap_adata.obs = cap_df
+        cap_adata.overwrite(["obs"])
+
+    new_column_order.reverse()
+    with read_h5ad(file_path=file_path, edit=True) as cap_adata:
+        cap_adata.read_obs()
+        cap_df = cap_adata.obs
+        cap_df.column_order = new_column_order # change order via column_order
         cap_adata.obs = cap_df
         cap_adata.overwrite(["obs"])
 
