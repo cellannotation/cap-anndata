@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [v0.4.0] - 2025-01-16
+
+### Fixed
+**Bug fixes related to AnnData update**:
+  - Assignment destination is read-only during rename column ([#32](https://github.com/cellannotation/cap-anndata/pull/38)).
+  - Change index of the `CapAnnDataDF` when save anndata ([#29](https://github.com/cellannotation/cap-anndata/pull/36)).
+  - Overwrite `CapAnnDataDF` before read obs (or var) leads to bug ([#33](https://github.com/cellannotation/cap-anndata/pull/35)).
+
+### Changed
+- **Refactoring**:
+  - Update `CSRDataset` and `CSCDataset` import from `AnnData` ([#31](https://github.com/cellannotation/cap-anndata/pull/37)).
+  - Remove a few print statements ([#34](https://github.com/cellannotation/cap-anndata/pull/37)).
+- **Fields access during overwrite of AnnData**:
+  - Overwrite tries to read raw layer on every call ([#28](https://github.com/cellannotation/cap-anndata/pull/37)).
+
 ## [v0.3.1] - 2024-11-08
 
 ### Fixed
