@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [v0.5.0] - 2025-05-30
+
+### Added
+**Data Frames from obsm parsing**:
+  - Added support for Pandas Data Frames placed in obsm and varm sections.([#40](https://github.com/cellannotation/cap-anndata/pull/40))
+
 ## [v0.4.0] - 2025-01-16
 
 ### Fixed

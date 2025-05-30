@@ -1,5 +1,7 @@
 # CAP-AnnData: Partial I/O for AnnData (.h5ad) Files
 
+[![PyPI version](https://img.shields.io/pypi/v/cap-anndata)](https://pypi.org/project/cap-anndata/) [![Build Status](https://github.com/cellannotation/cap-anndata/actions/workflows/python-app.yml/badge.svg)](https://github.com/cellannotation/cap-anndata/actions)
+
 ## Overview
 CAP-AnnData offering functionalities for selective reading and writing of [AnnData](https://pypi.org/project/anndata/) 
 file fields without the need for loading entire dataset (or even entire field) into memory. 
