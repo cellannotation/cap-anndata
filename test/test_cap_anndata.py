@@ -829,8 +829,7 @@ def test_df_in_obsm():
 
     with read_h5ad(file_path=file_path, edit=False) as cap_adata:
         assert cap_adata.obsm_keys() == ["df"]
-    
-    cap_df = cap_adata.obsm["df"]
+        cap_df = cap_adata.obsm["df"]
     assert cap_df.shape == df.shape
     assert cap_df.columns == df.columns
     assert (cap_df["n"] == df["n"]).all()
