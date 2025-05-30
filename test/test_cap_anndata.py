@@ -816,3 +816,20 @@ def test_column_order_changes():
         cap_adata.read_obs()
         assert list(cap_adata.obs.column_order) == new_column_order
         assert list(cap_adata.obs.columns) == new_column_order
+
+
+def test_df_in_obsm():
+    adata = get_base_anndata(n_rows = 3, n_genes = 2, sparse=False)
+    df = pd.DataFrame(index=adata.obs.index, data={"n": 1})
+    adata.obsm["df"] = df
+
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(temp_folder, "test_df_in_obsm.h5ad")
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path=file_path, edit=False) as cap_adata:
+        assert cap_adata.obsm_keys() == ["df"]
+        cap_df = cap_adata.obsm["df"]
+    assert cap_df.shape == df.shape
+    assert cap_df.columns == df.columns
+    assert (cap_df["n"] == df["n"]).all()
