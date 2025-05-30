@@ -143,15 +143,19 @@ class BaseLayerMatrixAndDf:
         if not isinstance(group, h5py.Group):
             raise ValueError(f"The object {key} must be a group!")
 
-        for array_name in group.keys():
-            array = group[array_name]
-            if isinstance(array, h5py.Dataset):
-                cap_dict[array_name] = array
-            elif isinstance(array, h5py.Group):
-                cap_dict[array_name] = sparse_dataset(array)
+        for entity_name in group.keys():
+            entity = group[entity_name]
+            if isinstance(entity, h5py.Dataset):
+                cap_dict[entity_name] = entity
+            elif isinstance(entity, h5py.Group):
+                enc_type = dict(entity.attrs).get("encoding-type")
+                if enc_type == "dataframe":
+                    cap_dict[entity_name] = self._read_df(key="/".join([key, entity_name]), columns=None)
+                elif enc_type in ["csc_matrix", "csr_matrix"]:
+                    cap_dict[entity_name] = sparse_dataset(entity)
             else:
                 raise ValueError(
-                    f"Can't link array in {key} due to unsupported type of object: {type(array)}"
+                    f"Can't link array in {key} due to unsupported type of object: {type(entity)}"
                 )
 
     def _create_new_matrix(
@@ -260,11 +264,11 @@ class CapAnnData(BaseLayerMatrixAndDf):
     def raw(self) -> RawLayer:
         if self._raw is None:
             if "raw" not in self._file.keys():
-                logger.warning("Can't read raw.var since raw layer doesn't exist!")
+                logger.debug("Can't read raw.var since raw layer doesn't exist!")
                 return
 
             if len(self._file["raw"].keys()) == 0:
-                logger.warning("The raw layer is empty!")
+                logger.debug("The raw layer is empty!")
                 return
 
             self._raw = RawLayer(self._file)
