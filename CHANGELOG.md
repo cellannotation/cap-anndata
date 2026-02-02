@@ -1,6 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## Unreleased
+
+## [0.5.1] - 2026-02-02
+
+- Fixed import of `Self` type
 
 ## [v0.5.0] - 2025-05-30
 
