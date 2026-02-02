@@ -151,8 +151,10 @@ class BaseLayerMatrixAndDf:
                 enc_type = dict(entity.attrs).get("encoding-type")
                 if enc_type == "dataframe":
                     cap_dict[entity_name] = self._read_df(key="/".join([key, entity_name]), columns=None)
-                elif enc_type in ["csc_matrix", "csr_matrix"]:
+                elif enc_type in ["csr", "csc", "csr_matrix", "csc_matrix"]:
                     cap_dict[entity_name] = sparse_dataset(entity)
+                elif enc_type == "array":
+                    cap_dict[entity_name] = entity
             else:
                 raise ValueError(
                     f"Can't link array in {key} due to unsupported type of object: {type(entity)}"
