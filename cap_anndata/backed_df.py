@@ -2,8 +2,12 @@ import pandas as pd
 import numpy as np
 from typing import List, Any, Union
 
-from pandas._typing import Self
 from pandas.core.generic import bool_t
+
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python 3.10
 
 
 class CapAnnDataDF(pd.DataFrame):
