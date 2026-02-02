@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import List, Any, Union
-
-from pandas.core.generic import bool_t
+from typing import List, Any, Union, Optional
 
 try:
     from typing import Self  # Python 3.11+
@@ -79,7 +77,7 @@ class CapAnnDataDF(pd.DataFrame):
         df = self.from_df(result, column_order=column_order)
         return df
 
-    def copy(self, deep: Union[bool_t, None] = True) -> Self:
+    def copy(self, deep: Optional[bool] = True) -> Self:
         column_order = self.column_order_array()
         df = self.from_df(super().copy(deep=deep), column_order=column_order)
         return df
