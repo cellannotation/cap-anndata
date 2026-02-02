@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [0.5.2] - 2026-02-02
+
+- Fixed import of `bool_t` from `pandas`
+
 ## [0.5.1] - 2026-02-02
 
 - Fixed import of `Self` type
