@@ -448,8 +448,13 @@ class CapAnnData(BaseLayerMatrixAndDf):
                 if self.uns[key] is not NotLinkedObject:
                     dest = f"uns/{key}"
                     self._write_elem(dest, self.uns[key], compression=compression)
-            for key in self.uns.keys_to_remove:
-                del self._file[f"uns/{key}"]
+            
+            to_remove = list(self.uns.keys_to_remove)
+            for key in to_remove:
+                path = f"uns/{key}"
+                if path in self._file:
+                    del self._file[path]
+            self.uns.keys_to_remove.clear()
 
         for field in ["layers", "obsm", "varm", "obsp", "varp"]:
             if field in fields:
