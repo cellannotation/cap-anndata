@@ -833,3 +833,37 @@ def test_df_in_obsm():
     assert cap_df.shape == df.shape
     assert cap_df.columns == df.columns
     assert (cap_df["n"] == df["n"]).all()
+
+
+def test_overwrite_uns_twice_after_deletion():
+    # Refs https://github.com/cellannotation/cap-anndata/issues/45
+    adata = get_base_anndata()
+    adata.uns = {
+        "to_remove": {"a": 1},
+        "to_modify": {"b": 2},
+    }
+
+    temp_folder = tempfile.mkdtemp()
+    file_path = os.path.join(
+        temp_folder, "test_overwrite_uns_twice_after_deletion.h5ad"
+    )
+    adata.write_h5ad(file_path)
+
+    with read_h5ad(file_path, edit=True) as cap_adata:
+        cap_adata.read_uns(["to_remove", "to_modify"])
+
+        # Schedule deletion
+        cap_adata.uns.pop("to_remove")
+        cap_adata.overwrite(["uns"])
+
+        # Make another independent modification
+        cap_adata.uns["to_modify"] = {"b": 3}
+        # Without the fix this line raised "KeyError: Couldn't delete link..."
+        cap_adata.overwrite(["uns"])
+
+    adata = ad.read_h5ad(file_path)
+
+    assert "to_remove" not in adata.uns
+    assert adata.uns["to_modify"] == {"b": 3}
+
+    os.remove(file_path)
