@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [0.5.3] - 2026-06-30
+
+Prevent repeated deletion of `uns` entries [#46](https://github.com/cellannotation/cap-anndata/pull/46)
+Fix anndata version warning [#47](https://github.com/cellannotation/cap-anndata/pull/47)
+
 ## [0.5.2] - 2026-02-02
 
 - Fixed import of `bool_t` from `pandas`
