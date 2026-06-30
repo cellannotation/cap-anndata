@@ -4,9 +4,11 @@ import numpy as np
 import h5py
 from typing import List, Union, Any, Tuple, Final
 import scipy.sparse as ss
-from packaging import version
 
-if version.parse(ad.__version__) < version.parse("0.11.0"):
+from importlib.metadata import version
+from packaging.version import parse
+
+if parse(version("anndata")) < parse("0.11.0"):
     from anndata.experimental import (
         sparse_dataset,
         read_elem,
