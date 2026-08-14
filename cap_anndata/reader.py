@@ -1,4 +1,5 @@
 import logging
+from time import sleep
 import h5py
 import warnings
 
@@ -8,25 +9,55 @@ from cap_anndata import CapAnnData
 logger = logging.getLogger(__name__)
 
 
-def read_h5ad(file_path: str, edit: bool = False):
+def read_h5ad(
+    file_path: str,
+    edit: bool = False,
+    *,
+    retries: int = 0,
+    retry_delay: float = 1,
+):
     """
     This is the main read method for CapAnnData.
     Must be used in 'with' context.
+
+    Args:
+        file_path: Path to the AnnData file.
+        edit: Open the file in read-write mode.
+        retries: Number of additional attempts when the file is locked. A negative
+            value disables retry.
+        retry_delay: Delay between attempts in seconds. A negative value disables
+            retry.
     """
+    if retries < 0 or retry_delay < 0:
+        retries = 0
+
     mode = "r+" if edit else "r"
     logger.debug(f"Read file {file_path} mode={mode} in context...")
 
-    try:
-        file = h5py.File(file_path, mode)
-        cap_adata = CapAnnData(file)
-        logger.debug(f"Successfully read anndata file path {file_path}")
-        return cap_adata
-
-    except Exception as error:
-        logger.error(
-            f"Error during read anndata file at path: {file_path}, error = {error}!"
-        )
-        raise error
+    for attempt in range(retries + 1):
+        try:
+            file = h5py.File(file_path, mode)
+            try:
+                cap_adata = CapAnnData(file)
+            except Exception:
+                file.close()
+                raise
+            logger.debug(f"Successfully read anndata file path {file_path}")
+            return cap_adata
+        except BlockingIOError:
+            if attempt == retries:
+                logger.error(f"AnnData file remains locked after {attempt} retries: {file_path}")
+                raise
+            logger.warning(
+                f"AnnData file is locked; retrying in {retry_delay} seconds: "
+                f"{file_path}, attempt={attempt + 1}/{retries}"
+            )
+            sleep(retry_delay)
+        except Exception as error:
+            logger.error(
+                f"Error during read anndata file at path: {file_path}, error = {error}!"
+            )
+            raise
 
 
 def deprecated(message):

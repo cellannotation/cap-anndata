@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added optional retry handling for locked files to `read_h5ad`.
+
 ## [0.5.3] - 2026-06-30
 
 Prevent repeated deletion of `uns` entries [#46](https://github.com/cellannotation/cap-anndata/pull/46)

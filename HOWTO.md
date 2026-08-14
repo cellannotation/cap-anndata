@@ -30,6 +30,17 @@ print(cap_adata.file) # h5py.File opened in 'r+' mode
 cap_adata.file.close()  # Don't forget to close the file
 ```
 
+To retry opening a locked file, set the number of additional attempts and the
+delay between them in seconds:
+
+```python
+with read_h5ad(path, retries=5, retry_delay=1) as cap_adata:
+    print(cap_adata.file)
+```
+
+Retry is disabled when either `retries` or `retry_delay` is negative. In that
+case, `read_h5ad` makes one attempt to open the file without waiting.
+
 ## 2. Read DataFrames: obs and var
 
 ### Basic Reading
