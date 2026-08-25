@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [0.6.0] - 2026-08-25
+
+- Added support for AnnData 0.13.x. ([#50](https://github.com/cellannotation/cap-anndata/pull/50))
+
 ## [0.5.3] - 2026-06-30
 
 Prevent repeated deletion of `uns` entries [#46](https://github.com/cellannotation/cap-anndata/pull/46)

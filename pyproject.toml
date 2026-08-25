@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cap_anndata"
-version = "0.5.3"
+version = "0.6.0"
 description = "Partial read/write of AnnData (h5ad) files for low-memory operations with large datasets."
 readme = "README.md"
 requires-python = ">=3.9"
