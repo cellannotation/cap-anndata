@@ -410,10 +410,10 @@ def test_obs_var_keys():
         obs_keys_after_read = cap_adata.obs_keys()
         var_keys_after_read = cap_adata.var_keys()
 
-    assert obs_keys_before_read == adata.obs_keys()
-    assert obs_keys_after_read == adata.obs_keys()
-    assert var_keys_before_read == adata.var_keys()
-    assert var_keys_after_read == adata.var_keys()
+    assert obs_keys_before_read == adata.obs.columns.tolist()
+    assert obs_keys_after_read == adata.obs.columns.tolist()
+    assert var_keys_before_read == adata.var.columns.tolist()
+    assert var_keys_after_read == adata.var.columns.tolist()
     os.remove(file_path)
 
 
