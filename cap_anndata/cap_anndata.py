@@ -26,6 +26,8 @@ else:
         CSRDataset,
         CSCDataset,
     )
+    import anndata
+    anndata.settings.allow_write_nullable_strings = True
 
 from cap_anndata import CapAnnDataDF, CapAnnDataDict
 
@@ -116,8 +118,11 @@ class BaseLayerMatrixAndDf:
         return df
 
     def _write_elem(self, dest_key: str, elem: any, compression: str) -> None:
+        path_list = dest_key.split("/")
+        group_path = "/".join(path_list[:-1])
+        key = path_list[-1]
         write_elem(
-            self._file, dest_key, elem, dataset_kwargs={"compression": compression}
+            self._file[group_path], key, elem, dataset_kwargs={"compression": compression}
         )
 
     def _validate_cap_df(self, cap_df: CapAnnDataDF, axis: int) -> None:
